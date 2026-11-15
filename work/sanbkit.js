@@ -1,0 +1,160 @@
+window.SK = (function(){
+  const SB = "https://tile.loc.gov/image-services/iiif/service:gmd:gmd415m:g4154m:g4154dm:";
+  const sid = n => (n >= 150 ? "g02629190102:02629_02_1901-" : "g02629190101:02629_01_1901-") + String(n).padStart(4, "0");
+  const url = (n, r, w) => SB + sid(n) + "/" + (r || "full") + "/" + (w || 2400) + ",/0/default.jpg";
+  const K = {};
+  K.sid = sid; K.url = url;
+  K.view = (la, lo, z) => { K.hideSheet(); M.setView([la, lo], z || 18, { animate: false }); };
+  K.ll = (x, y) => { const p = M.containerPointToLatLng([x, y]); return [+p.lat.toFixed(7), +p.lng.toFixed(7)]; };
+  K.px = (la, lo) => { const p = M.latLngToContainerPoint([la, lo]); return [Math.round(p.x), Math.round(p.y)]; };
+  K.sheet = (n, fx0, fy0, fw, fh, w) => new Promise(res => {
+    K.hideSheet();
+    const d = document.createElement("div"); d.id = "SKD";
+    d.style.cssText = "position:fixed;inset:0;background:#222;z-index:100000";
+    const im = new Image(); im.style.cssText = "position:absolute;left:0;top:0";
+    const r = "pct:" + [fx0 * 100, fy0 * 100, fw * 100, fh * 100].map(v => +v.toFixed(3)).join(",");
+    im.onload = () => {
+      const W = innerWidth, H = innerHeight, s = Math.min(W / im.naturalWidth, H / im.naturalHeight);
+      im.style.width = im.naturalWidth * s + "px"; im.style.height = im.naturalHeight * s + "px";
+      K._sv = { n, fx0, fy0, fw, fh, dw: im.naturalWidth * s, dh: im.naturalHeight * s };
+      res(K._sv);
+    };
+    im.onerror = () => res("load error");
+    im.src = url(n, r, w || 2000);
+    d.appendChild(im); document.body.appendChild(d);
+  });
+  K.hideSheet = () => { const d = document.getElementById("SKD"); if (d) d.remove(); };
+  K.f = (x, y) => { const v = K._sv; return [+(v.fx0 + x / v.dw * v.fw).toFixed(5), +(v.fy0 + y / v.dh * v.fh).toFixed(5)]; };
+  function solve(rows, ys) {
+    const A = [[0,0,0],[0,0,0],[0,0,0]], b = [0,0,0];
+    rows.forEach((v, i) => { for (let a = 0; a < 3; a++) { b[a] += v[a] * ys[i]; for (let c = 0; c < 3; c++) A[a][c] += v[a] * v[c]; } });
+    const Mx = A.map((r, i) => [...r, b[i]]);
+    for (let i = 0; i < 3; i++) { let p = i; for (let k = i + 1; k < 3; k++) if (Math.abs(Mx[k][i]) > Math.abs(Mx[p][i])) p = k; [Mx[i], Mx[p]] = [Mx[p], Mx[i]];
+      for (let k = 0; k < 3; k++) if (k !== i) { const f = Mx[k][i] / Mx[i][i]; for (let j = i; j <= 3; j++) Mx[k][j] -= f * Mx[i][j]; } }
+    return Mx.map((r, i) => r[3] / r[i]);
+  }
+  const FT_LA = 364000, FT_LO = 272500;
+  K.fit = (pairs) => {
+    const rows = pairs.map(p => [p[0], p[1], 1]);
+    const cA = solve(rows, pairs.map(p => p[2])), cO = solve(rows, pairs.map(p => p[3]));
+    const P = (x, y) => [cA[0] * x + cA[1] * y + cA[2], cO[0] * x + cO[1] * y + cO[2]];
+    const res = pairs.map(p => { const q = P(p[0], p[1]); return [Math.round((q[0] - p[2]) * FT_LA), Math.round((q[1] - p[3]) * FT_LO)]; });
+    const rms = Math.sqrt(res.reduce((a, r) => a + r[0] * r[0] + r[1] * r[1], 0) / res.length);
+    const w = Math.hypot(cA[0] * FT_LA, cO[0] * FT_LO), h = Math.hypot(cA[1] * FT_LA, cO[1] * FT_LO);
+    const rot = Math.atan2(cA[0] * FT_LA, cO[0] * FT_LO) * 180 / Math.PI;
+    K._fit = { cA, cO, P };
+    return { res, rms: +rms.toFixed(1), sheetW_ft: Math.round(w), sheetH_ft: Math.round(h), rot_deg: +rot.toFixed(2) };
+  };
+  K.P = (fx, fy) => K._fit.P(fx, fy);
+  K.corners = (x, y, w, h) => { const P = K._fit.P; return [P(x, y), P(x + w, y), P(x, y + h)].map(p => [+p[0].toFixed(7), +p[1].toFixed(7)]); };
+  K.rstr = (x, y, w, h) => "pct:" + [x * 100, y * 100, w * 100, h * 100].map(v => +v.toFixed(3)).join(",");
+  const AF = L.Layer.extend({
+    initialize(u, c) { this._u = u; this._c = c.map(p => L.latLng(p)); },
+    onAdd(m) { this._m = m; const i = this._i = L.DomUtil.create("img", "leaflet-zoom-hide"); i.style.cssText = "position:absolute;left:0;top:0;transform-origin:0 0;max-width:none;pointer-events:none;opacity:" + (K.op || 0.6); i.onload = () => this._r(); i.src = this._u; m.getPanes().overlayPane.appendChild(i); m.on("zoomend viewreset moveend", this._r, this); },
+    onRemove(m) { L.DomUtil.remove(this._i); m.off("zoomend viewreset moveend", this._r, this); },
+    _r() { const i = this._i; if (!i.naturalWidth) return; const m = this._m, w = i.naturalWidth, h = i.naturalHeight, a = m.latLngToLayerPoint(this._c[0]), b = m.latLngToLayerPoint(this._c[1]), c = m.latLngToLayerPoint(this._c[2]); i.style.transform = "matrix(" + [(b.x - a.x) / w, (b.y - a.y) / w, (c.x - a.x) / h, (c.y - a.y) / h, a.x, a.y].join(",") + ")"; }
+  });
+  K.prev = [];
+  K.show = (n, r, a, w) => { const l = new AF(url(n, r, w || 1600), a).addTo(M); K.prev.push(l); return l; };
+  K.clear = () => { K.prev.forEach(l => M.removeLayer(l)); K.prev = []; };
+  K.opacity = o => { K.op = o; K.prev.forEach(l => l._i && (l._i.style.opacity = o)); };
+  K.save = (n, part, r, a) => {
+    const S = JSON.parse(localStorage.getItem("SHEETS2")); const id = sid(n);
+    const e = { id, r, a }; if (part) e.part = part;
+    const lat = a.map(p => p[0]), lng = a.map(p => p[1]);
+    const br = [a[1][0] + a[2][0] - a[0][0], a[1][1] + a[2][1] - a[0][1]]; lat.push(br[0]); lng.push(br[1]);
+    e.b = [[Math.min(...lat), Math.min(...lng)], [Math.max(...lat), Math.max(...lng)]];
+    const i = S.findIndex(s => s.id === id && (s.part || "") === (part || ""));
+    if (i >= 0) S[i] = e; else S.push(e);
+    localStorage.setItem("SHEETS2", JSON.stringify(S)); return S.length;
+  };
+  K.remove = (n, part) => { const S = JSON.parse(localStorage.getItem("SHEETS2")).filter(s => !(s.id === sid(n) && (part === undefined || (s.part || "") === part))); localStorage.setItem("SHEETS2", JSON.stringify(S)); return S.length; };
+  K.showSaved = (n) => { K.clear(); JSON.parse(localStorage.getItem("SHEETS2")).filter(s => n === undefined || s.id === sid(n)).forEach(s => K.show(+s.id.slice(-4), s.r, s.a)); };
+  K.build = () => {
+    let M5 = localStorage.getItem("MASTER5"); const S = localStorage.getItem("SHEETS2");
+    const i = M5.indexOf("const SHEETS="), j = M5.indexOf(";\n", i);
+    M5 = M5.slice(0, i) + "const SHEETS=" + S + M5.slice(j); localStorage.setItem("MASTER5", M5);
+    const A = M5.indexOf("window.HOUSES=") + 14, B = M5.indexOf(";</script>", A);
+    const H = JSON.parse(M5.slice(A, B)).map(r => { const c = r.slice(); c[10] = ""; return c; });
+    const pub = M5.slice(0, A) + JSON.stringify(H) + M5.slice(B);
+    const d = new DOMParser().parseFromString(pub, "text/html"); const e = [];
+    [...d.querySelectorAll("script:not([src])")].forEach((s, k) => { try { new Function(s.textContent); } catch (x) { e.push(k + ":" + x.message); } });
+    if (!e.length) window.name = pub; return [e.join("|"), pub.length, JSON.parse(S).length];
+  };
+  return K;
+})();
+SK.sheet2=(n,fx0,fy0,fw,fh,w)=>{SK.hideSheet();SK._sv=null;const d=document.createElement("div");d.id="SKD";d.style.cssText="position:fixed;inset:0;background:#222;z-index:100000";const im=new Image();im.style.cssText="position:absolute;left:0;top:0";const r="pct:"+[fx0*100,fy0*100,fw*100,fh*100].map(v=>+v.toFixed(3)).join(",");let tries=0;const u=SK.url(n,r,w||1600);im.onload=()=>{const s=Math.min(innerWidth/im.naturalWidth,innerHeight/im.naturalHeight);im.style.width=im.naturalWidth*s+"px";im.style.height=im.naturalHeight*s+"px";SK._sv={n,fx0,fy0,fw,fh,dw:im.naturalWidth*s,dh:im.naturalHeight*s}};im.onerror=()=>{if(++tries<4)setTimeout(()=>im.src=u+"?r="+tries,1500);else SK._sv="error"};im.src=u;d.appendChild(im);document.body.appendChild(d);return "loading"};
+SK.wait=async(t)=>{for(let i=0;i<(t||30);i++){if(SK._sv)return JSON.stringify(SK._sv);await new Promise(r=>setTimeout(r,1000))}return "timeout"};
+SK.verts=()=>{const V=[];M.eachLayer(l=>{if(l instanceof L.Polygon&&l.options.pane==='lots'){l.getLatLngs().flat(3).forEach(p=>V.push([p.lat,p.lng]))}});return V};
+SK.inter=(g,u,v,R)=>{R=R||140;const FA=364000,FO=272500;const V=SK.verts();const q=[null,null,null,null],qd=[1e9,1e9,1e9,1e9];for(const p of V){const dx=(p[1]-g[1])*FO,dy=(p[0]-g[0])*FA;const d=Math.hypot(dx,dy);if(d>R||d<8)continue;const a=dx*u[0]+dy*u[1],b=dx*v[0]+dy*v[1];const k=(a>0?1:0)+(b>0?2:0);if(d<qd[k]){qd[k]=d;q[k]=p}}if(q.some(x=>!x))return {err:'missing quadrant',qd};const la=q.reduce((s,p)=>s+p[0],0)/4,lo=q.reduce((s,p)=>s+p[1],0)/4;return {p:[+la.toFixed(7),+lo.toFixed(7)],qd:qd.map(Math.round)}};
+SK.dir=(a,b)=>{const FA=364000,FO=272500;const x=(b[1]-a[1])*FO,y=(b[0]-a[0])*FA,n=Math.hypot(x,y);return [x/n,y/n]};
+SK.setup=()=>{document.querySelectorAll('.leaflet-marker-pane,.leaflet-tooltip-pane').forEach(e=>e.style.display='none');const g=document.querySelector('.omg');if(g&&!g.checked)g.click();if(!M.getPane('skp')){M.createPane('skp');M.getPane('skp').style.zIndex=340}};
+SK.showPieces=(n,ps)=>{SK.clear();ps.forEach(p=>SK.show(n,p.r,p.a,1600));SK.prev.forEach(l=>M.getPane('skp').appendChild(l._i));SK.opacity(0.5)};
+
+SK.strips=(n,fys,fh)=>{SK.hideSheet();SK._st=0;const d=document.createElement('div');d.id='SKD';d.style.cssText='position:fixed;inset:0;background:#222;z-index:100000';const h=Math.floor(innerHeight/fys.length);fys.forEach((fy,i)=>{const im=new Image();im.style.cssText='position:absolute;left:0;top:'+(i*h)+'px;width:1280px;height:'+(h-2)+'px';let t=0;const u=SK.url(n,'pct:0,'+(fy*100).toFixed(3)+',100,'+(fh*100).toFixed(3),1600);im.onload=()=>{SK._st++};im.onerror=()=>{if(++t<4)setTimeout(()=>im.src=u+'?r='+t,1500)};im.src=u;d.appendChild(im)});document.body.appendChild(d);SK._sh=h;return h};
+SK.waitS=async(k)=>{for(let i=0;i<45;i++){if(SK._st>=k)return 'ok '+SK._sh;await new Promise(r=>setTimeout(r,1000))}return 'timeout '+SK._st};
+SK.grid=async(pts,u,v)=>{u=u||[1,0];v=v||[0,1];const o={},I={};for(const k in pts){let q=SK.inter(pts[k],u,v);if(q.p)q=SK.inter(q.p,u,v);const sp=q.p?Math.max(...q.qd)-Math.min(...q.qd):99;o[k]=q.qd?q.qd.join('/'):'x';I[k]=(q.p&&sp<9&&Math.max(...q.qd)<80)?q.p:null}return [I,o]};
+SK.check=async(n,a,c,z)=>{MK.forEach(m=>M.removeLayer(m));MK=[];SK.clear();const l=SK.show(n,'full',a,1200);M.getPane('skp').appendChild(l._i);SK.opacity(0.6);M.setView(c,z||18,{animate:false});for(let i=0;i<20&&!l._i.naturalWidth;i++){if(i===8)l._i.src=l._u+'?r=2';await new Promise(r=>setTimeout(r,1500))}await new Promise(r=>setTimeout(r,3500));l._r();return l._i.naturalWidth};
+
+SK.two=async(a,b)=>{SK.clear();SK.hideSheet();const d=document.createElement('div');d.id='SKD';d.style.cssText='position:fixed;inset:0;background:#222;z-index:100000';let c=0;[a,b].forEach((n,i)=>{const im=new Image();im.style.cssText='position:absolute;top:0;height:627px;left:'+(i*540)+'px';let t=0;const u=SK.url(n,'full',1200);im.onload=()=>c++;im.onerror=()=>{if(++t<4)setTimeout(()=>im.src=u+'?r='+t,1500)};im.src=u;d.appendChild(im)});document.body.appendChild(d);for(let i=0;i<45&&c<2;i++)await new Promise(r=>setTimeout(r,1000));return c};
+SK.multi=async(list)=>{SK.hideSheet();SK._st=0;const d=document.createElement('div');d.id='SKD';d.style.cssText='position:fixed;inset:0;background:#222;z-index:100000';const h=Math.floor(627/list.length);list.forEach(([n,fy],i)=>{const im=new Image();im.style.cssText='position:absolute;left:0;top:'+(i*h)+'px;width:1280px;height:'+(h-2)+'px';let t=0;const u=SK.url(n,'pct:0,'+(fy*100).toFixed(2)+',100,12',1600);im.onload=()=>SK._st++;im.onerror=()=>{if(++t<4)setTimeout(()=>im.src=u+'?r='+t,1500)};im.src=u;d.appendChild(im)});document.body.appendChild(d);for(let i=0;i<45&&SK._st<list.length;i++)await new Promise(r=>setTimeout(r,1000));return SK._st+' h'+h};
+
+window.ISB=(R,G,B)=>(R>100&&G>90&&B<0.6*G&&R-B>60)||(R>130&&R-G>45&&B>G-10);
+window.LOADI=async(n,r,W=1600)=>{const im=new Image();im.crossOrigin='anonymous';im.src=SK.url(n,r,W);await new Promise((res,rej)=>{im.onload=res;im.onerror=rej});const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;const g=c.getContext('2d');g.drawImage(im,0,0);const D=g.getImageData(0,0,c.width,c.height).data;const M=new Uint8Array(c.width*c.height);for(let p=0;p<M.length;p++){const k=p*4;M[p]=ISB(D[k],D[k+1],D[k+2])?1:0}return {w:c.width,h:c.height,M}};
+window.INV=a=>{const A=[[a[1][0]-a[0][0],a[2][0]-a[0][0]],[a[1][1]-a[0][1],a[2][1]-a[0][1]]];const det=A[0][0]*A[1][1]-A[0][1]*A[1][0];return h=>{const dy=h[0]-a[0][0],dx=h[1]-a[0][1];return [(dy*A[1][1]-dx*A[0][1])/det,(A[0][0]*dx-A[1][0]*dy)/det]}};
+window.PINS=(a,m=.05)=>{const f=INV(a);return HOUSES.filter(h=>{if(!(h[2]<=1900))return false;const [u,v]=f(h);return u>m&&u<1-m&&v>m&&v<1-m})};
+window.SC2=(I,a,P,rad=5)=>{const f=INV(a);let hit=0;for(const h of P){const [u,v]=f(h);if(u<0||u>1||v<0||v>1)continue;const X=Math.round(u*I.w),Y=Math.round(v*I.h);let ok=0;for(let i=-rad;i<=rad&&!ok;i++)for(let j=-rad;j<=rad;j++){if(I.M[(Y+j)*I.w+X+i]){ok=1;break}}hit+=ok}return hit};
+window.SR2=(I,a,P,R=400,st=10)=>{let best=[-1];for(let dy=-R;dy<=R;dy+=st)for(let dx=-R;dx<=R;dx+=st){const b=a.map(p=>[p[0]+dy/364000,p[1]+dx/272500]);const s=SC2(I,b,P);if(s>best[0]||(s==best[0]&&Math.hypot(dx,dy)<Math.hypot(best[2],best[3])))best=[s,P.length,dx,dy,SC2(I,a,P)]}return best};
+window.SIM2=(p1,p2,asp)=>{const FA=364000,FO=272500;const dx=p2[0]-p1[0];const ex=[(p2[3]-p1[3])*FO/dx,(p2[2]-p1[2])*FA/dx];const ey=[ex[1]*asp,-ex[0]*asp];const P=(x,y)=>{const u=x-p1[0],v=y-p1[1];return [+(p1[2]+(u*ex[1]+v*ey[1])/FA).toFixed(7),+(p1[3]+(u*ex[0]+v*ey[0])/FO).toFixed(7)]};return P};
+window.DARK=async(n,r,W=1600)=>{const im=new Image();im.crossOrigin='anonymous';im.src=SK.url(n,r,W);await new Promise((res,rej)=>{im.onload=res;im.onerror=rej});const c=document.createElement('canvas');c.width=im.naturalWidth;c.height=im.naturalHeight;const g=c.getContext('2d');g.drawImage(im,0,0);const D=g.getImageData(0,0,c.width,c.height).data;const Mk=new Uint8Array(c.width*c.height);for(let p=0;p<Mk.length;p++){const k=p*4,R=D[k],G=D[k+1],B=D[k+2];Mk[p]=(R<120&&G<120&&B<120)?1:0}return {w:c.width,h:c.height,M:Mk}};
+window.GETSEGS=async(lat,lng)=>{M.setView([lat,lng],18,{animate:false});await new Promise(r=>setTimeout(r,4500));const segs=[];M.eachLayer(l=>{if(l.getLatLngs&&!(l instanceof L.Marker)){const flat=a=>Array.isArray(a)&&a.length&&Array.isArray(a[0])?a.flatMap(flat):[a];flat(l.getLatLngs()).forEach(r=>{if(Array.isArray(r))for(let i=0;i<r.length;i++){const p=r[i],q=r[(i+1)%r.length];segs.push([p.lat,p.lng,q.lat,q.lng])}})}});return segs};
+window.QSHIFT=(I,a,segs,box,R=30)=>{const f=INV(a);let pts=[];for(const s of segs){const L=Math.hypot((s[2]-s[0])*364000,(s[3]-s[1])*272500);const n=Math.max(1,Math.round(L/3));for(let i=0;i<=n;i++){const la=s[0]+(s[2]-s[0])*i/n,lo=s[1]+(s[3]-s[1])*i/n;const [u,v]=f([la,lo]);if(u>box[0]&&u<box[2]&&v>box[1]&&v<box[3])pts.push([u,v])}}if(pts.length<50)return null;if(pts.length>1500){const k=pts.length/1500;pts=pts.filter((_,i)=>i%Math.ceil(k)==0)}
+const A=[[a[1][0]-a[0][0],a[2][0]-a[0][0]],[a[1][1]-a[0][1],a[2][1]-a[0][1]]];const det=A[0][0]*A[1][1]-A[0][1]*A[1][0];const du=(dx,dy)=>{const dla=-dy/364000,dlo=-dx/272500;return [(dla*A[1][1]-dlo*A[0][1])/det,(A[0][0]*dlo-A[1][0]*dla)/det]};
+const sc=(dx,dy)=>{const [eu,ev]=du(dx,dy);let h=0;for(const p of pts){const X=Math.round((p[0]+eu)*I.w),Y=Math.round((p[1]+ev)*I.h);let ok=0;for(let i=-1;i<=1&&!ok;i++)for(let j=-1;j<=1;j++)if(I.M[(Y+j)*I.w+X+i]){ok=1;break}h+=ok}return h/pts.length};
+let best=[sc(0,0),0,0];const s0=best[0];for(let dy=-R;dy<=R;dy+=4)for(let dx=-R;dx<=R;dx+=4){const s=sc(dx,dy);if(s>best[0])best=[s,dx,dy]}const b0=best.slice();for(let dy=b0[2]-4;dy<=b0[2]+4;dy+=1)for(let dx=b0[1]-4;dx<=b0[1]+4;dx+=1){const s=sc(dx,dy);if(s>best[0])best=[s,dx,dy]}return {n:pts.length,s0:+s0.toFixed(3),best:[+best[0].toFixed(3),best[1],best[2]]}};
+window.LOTCHK=async(n,r,a,Q)=>{Q=Q||[[.05,.05,.5,.5],[.5,.05,.95,.5],[.05,.5,.5,.95],[.5,.5,.95,.95]];const I=await DARK(n,r);const Pf=(u,v)=>[a[0][0]+u*(a[1][0]-a[0][0])+v*(a[2][0]-a[0][0]),a[0][1]+u*(a[1][1]-a[0][1])+v*(a[2][1]-a[0][1])];const out=[];for(const b of Q){const cu=(b[0]+b[2])/2,cv=(b[1]+b[3])/2;const c=Pf(cu,cv);const segs=await GETSEGS(c[0],c[1]);out.push([cu,cv,QSHIFT(I,a,segs,b)])}return out};
+window.LOTFIT=(a,chk,minS=.25)=>{const Pf=(u,v)=>[a[0][0]+u*(a[1][0]-a[0][0])+v*(a[2][0]-a[0][0]),a[0][1]+u*(a[1][1]-a[0][1])+v*(a[2][1]-a[0][1])];const good=chk.filter(q=>q[2]&&q[2].best[0]>=minS&&q[2].best[0]>q[2].s0+.03);if(good.length<3)return null;const pts=good.map(q=>{const p=Pf(q[0],q[1]);return [q[0],q[1],p[0]+q[2].best[2]/364000,p[1]+q[2].best[1]/272500]});const r=SK.fit(pts);return {fit:r,a:SK.corners(0,0,1,1),used:good.length}};
+window.QW=(I,a,segs,box,R=150,st=6)=>{const f=INV(a);let pts=[];for(const s of segs){const Lft=Math.hypot((s[2]-s[0])*364000,(s[3]-s[1])*272500);const n=Math.max(1,Math.round(Lft/4));for(let i=0;i<=n;i++){const la=s[0]+(s[2]-s[0])*i/n,lo=s[1]+(s[3]-s[1])*i/n;const [u,v]=f([la,lo]);if(u>box[0]-.15&&u<box[2]+.15&&v>box[1]-.15&&v<box[3]+.15)pts.push([u,v])}}if(pts.length<60)return null;if(pts.length>1200){const k=Math.ceil(pts.length/1200);pts=pts.filter((_,i)=>i%k==0)}
+const A=[[a[1][0]-a[0][0],a[2][0]-a[0][0]],[a[1][1]-a[0][1],a[2][1]-a[0][1]]];const det=A[0][0]*A[1][1]-A[0][1]*A[1][0];const du=(dx,dy)=>{const dla=-dy/364000,dlo=-dx/272500;return [(dla*A[1][1]-dlo*A[0][1])/det,(A[0][0]*dlo-A[1][0]*dla)/det]};
+const sc=(dx,dy)=>{const [eu,ev]=du(dx,dy);let h=0,t=0;for(const p of pts){const X=Math.round((p[0]+eu)*I.w),Y=Math.round((p[1]+ev)*I.h);if(X<2||Y<2||X>=I.w-2||Y>=I.h-2)continue;t++;let ok=0;for(let i=-1;i<=1&&!ok;i++)for(let j=-1;j<=1;j++)if(I.M[(Y+j)*I.w+X+i]){ok=1;break}h+=ok}return t>40?h/t:0};
+const res=[];for(let dy=-R;dy<=R;dy+=st)for(let dx=-R;dx<=R;dx+=st)res.push([sc(dx,dy),dx,dy]);res.sort((p,q)=>q[0]-p[0]);let best=res[0].slice();for(let dy=best[2]-st;dy<=best[2]+st;dy++)for(let dx=best[1]-st;dx<=best[1]+st;dx++){const s=sc(dx,dy);if(s>best[0])best=[s,dx,dy]}
+const second=res.find(r=>Math.hypot(r[1]-best[1],r[2]-best[2])>25);return {n:pts.length,s0:+sc(0,0).toFixed(3),best:[+best[0].toFixed(3),best[1],best[2]],second:second?[+second[0].toFixed(3),second[1],second[2]]:null}};
+window.AUTO=async(n,r,a,R=150)=>{const I=await DARK(n,r);const Pf=(u,v)=>[a[0][0]+u*(a[1][0]-a[0][0])+v*(a[2][0]-a[0][0]),a[0][1]+u*(a[1][1]-a[0][1])+v*(a[2][1]-a[0][1])];const out=[];for(const b of [[.08,.08,.5,.5],[.5,.08,.92,.5],[.08,.5,.5,.92],[.5,.5,.92,.92]]){const cu=(b[0]+b[2])/2,cv=(b[1]+b[3])/2;const c=Pf(cu,cv);const segs=await GETSEGS(c[0],c[1]);out.push([cu,cv,QW(I,a,segs,b,R)])}return out};
+window.NB=(a,dx,dy)=>{const L=(x,y)=>[a[0][0]+x*(a[1][0]-a[0][0])+y*(a[2][0]-a[0][0]),a[0][1]+x*(a[1][1]-a[0][1])+y*(a[2][1]-a[0][1])];const T=(x,y)=>L(x+dx,y+dy).map(v=>+v.toFixed(7));return [T(0,0),T(1,0),T(0,1)]};
+window.GA=n=>JSON.parse(localStorage.SHEETS2).find(x=>x.id.endsWith('-'+String(n).padStart(4,'0'))&&!x.part).a;
+window.STEP=async(n,a,r='full')=>{const c=await LOTCHK(n,r,a);let fit=LOTFIT(a,c);let a2=fit?fit.a:null;if(!a2){const g=c.filter(q=>q[2]&&q[2].best[0]>=.25&&q[2].best[0]>q[2].s0+.05);if(g.length>=2){const dx=g.reduce((s,q)=>s+q[2].best[1],0)/g.length,dy=g.reduce((s,q)=>s+q[2].best[2],0)/g.length;a2=a.map(t=>[t[0]+dy/364000,t[1]+dx/272500])}}const c2=a2?await LOTCHK(n,r,a2):null;return {c:c.map(q=>q[2]&&[q[2].s0,...q[2].best]),fit:fit&&fit.fit,a2,c2:c2&&c2.map(q=>q[2]&&[q[2].s0,...q[2].best])}};
+window.TRY=async(n,a,r='full')=>{const geo=a=>{const ex=[(a[1][1]-a[0][1])*272500,(a[1][0]-a[0][0])*364000],ey=[(a[2][1]-a[0][1])*272500,(a[2][0]-a[0][0])*364000];return [Math.hypot(...ex),Math.hypot(...ey),Math.atan2(ex[1],ex[0])*180/Math.PI]};const R=await STEP(n,a,r);const m=c=>c?c.filter(Boolean).reduce((s,q)=>s+q[0],0)/Math.max(1,c.filter(Boolean).length):0;const m0=m(R.c),m1=m(R.c2);let ok=false;if(R.a2){const g0=geo(a),g1=geo(R.a2);ok=m1>=m0+.05&&Math.abs(g1[0]/g0[0]-1)<.06&&Math.abs(g1[1]/g0[1]-1)<.06&&Math.abs(g1[2]-g0[2])<1.5}const fin=ok?R.a2:a;const mf=ok?m1:m0;const st=mf>=.25?'verified':mf>=.15?'approx':'weak';return {st,m0:+m0.toFixed(3),m1:+m1.toFixed(3),used:ok?'refit':'initial',a:fin.map(q=>q.map(v=>+v.toFixed(7)))}};
+window.TRY2=async(n,a,r='full',iters=2)=>{const m=c=>{const g=c.filter(q=>q[2]);return g.reduce((s,q)=>s+q[2].s0,0)/Math.max(1,g.length)};const geo=a=>{const ex=[(a[1][1]-a[0][1])*272500,(a[1][0]-a[0][0])*364000],ey=[(a[2][1]-a[0][1])*272500,(a[2][0]-a[0][0])*364000];return [Math.hypot(...ex),Math.hypot(...ey),Math.atan2(ex[1],ex[0])*180/Math.PI]};const g0=geo(a);let cur=a,c=await LOTCHK(n,r,cur),mc=m(c);const m0=mc;const log=[+mc.toFixed(3)];for(let it=0;it<iters;it++){const good=c.filter(q=>q[2]&&q[2].best[0]>=.22&&q[2].best[0]>q[2].s0+.04);if(!good.length)break;const cand=[];if(good.length>=3){const f=LOTFIT(cur,c,.22);if(f){const g1=geo(f.a);if(Math.abs(g1[0]/g0[0]-1)<.06&&Math.abs(g1[1]/g0[1]-1)<.06&&Math.abs(g1[2]-g0[2])<2)cand.push(f.a)}}const xs=good.map(q=>q[2].best[1]).sort((p,q)=>p-q),ys=good.map(q=>q[2].best[2]).sort((p,q)=>p-q);const dx=xs[xs.length>>1],dy=ys[ys.length>>1];cand.push(cur.map(t=>[t[0]+dy/364000,t[1]+dx/272500]));let best=null;for(const ca of cand){const cc=await LOTCHK(n,r,ca);const mm=m(cc);if(!best||mm>best[1])best=[ca,mm,cc]}if(best[1]>mc+.02){cur=best[0];c=best[2];mc=best[1];log.push(+mc.toFixed(3))}else break}return {st:mc>=.25?'verified':mc>=.15?'approx':'weak',m0:+m0.toFixed(3),m:+mc.toFixed(3),log,a:cur.map(q=>q.map(v=>+v.toFixed(7)))}};
+window.RUNQ=async(q)=>{for(const [n,base,dx,dy,r] of q){try{const R=await TRY2(n,NB(GA(base),dx,dy),r||'full');QLOG[n]=[R.st,R.log,base,dx,dy];if(R.st!='weak')SK.save(n,'',r||'full',R.a);else QLOG[n].push('NOT SAVED')}catch(e){QLOG[n]=['err',String(e).slice(0,50)]}localStorage.QLOG=JSON.stringify(QLOG)}QLOG._qdone=Date.now();localStorage.QLOG=JSON.stringify(QLOG)};
+window.GRID=async(ns)=>{SK.hideSheet();const d=document.createElement('div');d.id='SKD';d.style.cssText='position:fixed;inset:0;background:#222;z-index:100000;display:flex;gap:4px';for(const n of ns){const im=new Image();im.style.cssText='height:627px';im.src=SK.url(n,'full',600);d.appendChild(im)}document.body.appendChild(d);await new Promise(r=>setTimeout(r,6000));return ns};
+window.RSAVE=(n,a,how,conf)=>{SK.save(n,'','full',a.map(q=>q.map(v=>+v.toFixed(7))));ROUGH[n]=[how,conf];localStorage.ROUGH=JSON.stringify(ROUGH)};
+window.SIMG=(p1,p2,asp=1002/857)=>{const FA=364000,FO=272500;const W=857,H=1002;const s1=[p1[0]*W,p1[1]*H],s2=[p2[0]*W,p2[1]*H];const g1=[p1[3]*FO,-p1[2]*FA],g2=[p2[3]*FO,-p2[2]*FA];const ds=[s2[0]-s1[0],s2[1]-s1[1]],dg=[g2[0]-g1[0],g2[1]-g1[1]];const den=ds[0]*ds[0]+ds[1]*ds[1];const a=(ds[0]*dg[0]+ds[1]*dg[1])/den,b=(ds[0]*dg[1]-ds[1]*dg[0])/den;return (x,y)=>{const u=x*W-s1[0],v=y*H-s1[1];const X=g1[0]+a*u-b*v,Y=g1[1]+b*u+a*v;return [+(-Y/FA).toFixed(7),+(X/FO).toFixed(7)]}};
+window.ROUGHFIT=async(n,A)=>{const R=await AUTO(n,'full',A,150);const g=R.filter(q=>q[2]&&q[2].best[0]>=.22&&q[2].best[0]>q[2].s0+.05&&(!q[2].second||q[2].best[0]>q[2].second[0]+.02));let a=A,note='nb';if(g.length>=2){const xs=g.map(q=>q[2].best[1]).sort((p,q)=>p-q),ys=g.map(q=>q[2].best[2]).sort((p,q)=>p-q);const dx=xs[xs.length>>1],dy=ys[ys.length>>1];const agree=g.filter(q=>Math.hypot(q[2].best[1]-dx,q[2].best[2]-dy)<20).length;if(agree>=2){a=A.map(t=>[t[0]+dy/364000,t[1]+dx/272500]);note='wide '+dx+','+dy+' ('+agree+'q)'}}const T=await TRY2(n,a);return {a:T.a,st:T.st,note,log:T.log}};
+window.RQ=async(q)=>{for(const [n,A,how] of q){try{const r=await ROUGHFIT(n,A);RSAVE(n,r.a,how+' | '+r.note+' | '+JSON.stringify(r.log),r.st=='verified'?'verified':r.st=='approx'?'approx':'guess')}catch(e){ROUGH[n]=['err '+String(e).slice(0,40),'none'];localStorage.ROUGH=JSON.stringify(ROUGH)}}ROUGH._t=Date.now();localStorage.ROUGH=JSON.stringify(ROUGH)};
+window.CROPA=(A,r)=>{const L=(x,y)=>[A[0][0]+x*(A[1][0]-A[0][0])+y*(A[2][0]-A[0][0]),A[0][1]+x*(A[1][1]-A[0][1])+y*(A[2][1]-A[0][1])];return [L(r[0],r[1]),L(r[0]+r[2],r[1]),L(r[0],r[1]+r[3])]};
+window.RQC=async(q)=>{for(const [n,part,r,A,how] of q){try{const rs=SK.rstr(...r);const a=CROPA(A,r);const R=await AUTO(n,rs,a,150);const g=R.filter(q=>q[2]&&q[2].best[0]>=.22&&q[2].best[0]>q[2].s0+.05);let b=a,note='nb';if(g.length>=2){const xs=g.map(q=>q[2].best[1]).sort((p,q)=>p-q),ys=g.map(q=>q[2].best[2]).sort((p,q)=>p-q);const dx=xs[xs.length>>1],dy=ys[ys.length>>1];if(g.filter(q=>Math.hypot(q[2].best[1]-dx,q[2].best[2]-dy)<20).length>=2){b=a.map(t=>[t[0]+dy/364000,t[1]+dx/272500]);note='wide '+dx+','+dy}}const T=await TRY2(n,b,rs);SK.save(n,part,rs,T.a);ROUGH[n+part]=[how+' | '+note+' | '+JSON.stringify(T.log),T.st]}catch(e){ROUGH[n+part]=['err '+String(e).slice(0,40),'none']}localStorage.ROUGH=JSON.stringify(ROUGH)}};
+window.NOM={1:0.1636,2:0.1632};window.DIMS=JSON.parse(localStorage.DIMS||'{}');
+window.ROTA=(a,deg)=>{const c=[(a[1][0]+a[2][0])/2,(a[1][1]+a[2][1])/2];const t=deg*Math.PI/180,co=Math.cos(t),si=Math.sin(t);return a.map(p=>{const x=(p[1]-c[1])*272500,y=(p[0]-c[0])*364000;const X=x*co-y*si,Y=x*si+y*co;return [c[0]+Y/364000,c[1]+X/272500]})};
+window.UV=(a,ll)=>{const f=p=>[(p[1]-a[0][1])*272500,(p[0]-a[0][0])*364000];const ex=f(a[1]),ey=f(a[2]),p=f([ll.lat,ll.lng]);const det=ex[0]*ey[1]-ex[1]*ey[0];return [(p[0]*ey[1]-p[1]*ey[0])/det,(ex[0]*p[1]-ex[1]*p[0])/det]};
+window.CROPWH=e=>{let w=1,h=1;if(e.r&&e.r!=='full'){const m=e.r.replace('pct:','').split(',').map(Number);w=m[2]/100;h=m[3]/100}const D=DIMS[e.id],s=NOM[e.id.includes('_01_')?1:2];return [w*D[0]*s,h*D[1]*s]};
+window.NORM=(e)=>{const a=e.a;const [Wf,Hf]=CROPWH(e);const f=p=>[(p[1]-a[0][1])*272500,(p[0]-a[0][0])*364000];const ex=f(a[1]),ey=f(a[2]);const c=[(ex[0]+ey[0])/2,(ex[1]+ey[1])/2];const th=Math.atan2(ex[1],ex[0]);const ux=[Math.cos(th),Math.sin(th)],uy=[Math.sin(th),-Math.cos(th)];const tl=[c[0]-ux[0]*Wf/2-uy[0]*Hf/2,c[1]-ux[1]*Wf/2-uy[1]*Hf/2];const g=q=>[a[0][0]+q[1]/364000,a[0][1]+q[0]/272500];return [g(tl),g([tl[0]+ux[0]*Wf,tl[1]+ux[1]*Wf]),g([tl[0]+uy[0]*Hf,tl[1]+uy[1]*Hf])]};
+window.SHIFTPX=(a,dx,dy)=>{const p0=M.containerPointToLatLng([600,300]),p1=M.containerPointToLatLng([600+dx,300+dy]);return a.map(c=>[c[0]+p1.lat-p0.lat,c[1]+p1.lng-p0.lng])};
+window.BB=a=>{const d=[a[0],a[1],a[2],[a[1][0]+a[2][0]-a[0][0],a[1][1]+a[2][1]-a[0][1]]];return [[Math.min(...d.map(p=>p[0])),Math.min(...d.map(p=>p[1]))],[Math.max(...d.map(p=>p[0])),Math.max(...d.map(p=>p[1]))]]};
+window.PUT=(i,a,extra)=>{const S=JSON.parse(localStorage.SHEETS2);const k='BAKI_'+i;if(!localStorage[k])localStorage[k]=JSON.stringify(S[i].a);S[i].a=a;S[i].b=BB(a);if(extra)Object.assign(S[i],extra);localStorage.SHEETS2=JSON.stringify(S);return S[i].id.slice(-4)+(S[i].part||'')};
+window.PREV=async(i,a,z,u,v)=>{const S=JSON.parse(localStorage.SHEETS2);const e=S[i];SK.clear();document.querySelectorAll('.leaflet-overlay-pane canvas.sanb').forEach(c=>c.style.visibility='hidden');SK.show(+e.id.slice(-4),e.r,a);const L=SK.prev[SK.prev.length-1];L.setOpacity&&L.setOpacity(.55);const P=[a[0][0]+u*(a[1][0]-a[0][0])+v*(a[2][0]-a[0][0]),a[0][1]+u*(a[1][1]-a[0][1])+v*(a[2][1]-a[0][1])];M.setView(P,z,{animate:false});await new Promise(r=>setTimeout(r,5000));return 'ok'};
+
+window.CMP=async(i,a,u,v,z)=>{const S=JSON.parse(localStorage.SHEETS2);const e=S[i];SK.clear();SK.show(+e.id.slice(-4),e.r,a);const L=SK.prev[SK.prev.length-1];L.setOpacity&&L.setOpacity(.6);const P=[e.a[0][0]+u*(e.a[1][0]-e.a[0][0])+v*(e.a[2][0]-e.a[0][0]),e.a[0][1]+u*(e.a[1][1]-e.a[0][1])+v*(e.a[2][1]-e.a[0][1])];M.setView(P,z||19,{animate:false});await new Promise(r=>setTimeout(r,5000));return 'ok'};
+window.PFIT=async(i,base)=>{const S=JSON.parse(localStorage.SHEETS2);const e=S[i];const I=await LOADI(+e.id.slice(-4),e.r||'full');const N=base||NORM(e);const P=PINS(e.a,.03);let best=[-1];for(const d of [-3,-2,-1,-.5,0,.5,1,2,3]){const A=ROTA(N,d);const r=SR2(I,A,P,60,4);if(r[0]>best[0]||(r[0]===best[0]&&Math.abs(d)<Math.abs(best[1])))best=[r[0],d,r[2],r[3]]}const A=ROTA(N,best[1]).map(p=>[p[0]+best[3]/364000,p[1]+best[2]/272500]);return {i,n:e.id.slice(-4)+(e.part||''),pins:P.length,orig:SC2(I,e.a,P),best,a:A}};
+window.ANCH=(e,fu,fv)=>{const a=e.a;const [W,H]=CROPWH(e);const Lh=(p,q)=>Math.hypot((q[1]-p[1])*272500,(q[0]-p[0])*364000);const sx=W/Lh(a[0],a[1]),sy=H/Lh(a[0],a[2]);const P=(u,v)=>[a[0][0]+u*(a[1][0]-a[0][0])+v*(a[2][0]-a[0][0]),a[0][1]+u*(a[1][1]-a[0][1])+v*(a[2][1]-a[0][1])];const o=P(fu,fv);const Q=(u,v)=>{const uu=fu+(u-fu)*sx,vv=fv+(v-fv)*sy;return P(uu,vv)};return [Q(0,0),Q(1,0),Q(0,1)]};
+window.PF=window.PF||{};
+
+window.FIT2=(n,crop,pairs)=>{/*pairs: [[u,v,lat,lng],...] least squares similarity, sheet frame ft*/const id=SK.sid?SK.sid(n):null;const e={id:(n<=96?'g02629190101:02629_01_1901-'+String(n).padStart(4,'0'):'g02629190102:02629_02_1901-'+String(n).padStart(4,'0')),r:crop||'full'};const [W,H]=CROPWH(e);const lat0=pairs[0][2],lng0=pairs[0][3];const A=pairs.map(p=>[p[0]*W,-p[1]*H]),B=pairs.map(p=>[(p[3]-lng0)*272500,(p[2]-lat0)*364000]);const n_=A.length;const ca=[0,1].map(i=>A.reduce((s,p)=>s+p[i],0)/n_),cb=[0,1].map(i=>B.reduce((s,p)=>s+p[i],0)/n_);let sxx=0,sxy=0,saa=0;A.forEach((p,i)=>{const x=p[0]-ca[0],y=p[1]-ca[1],X=B[i][0]-cb[0],Y=B[i][1]-cb[1];sxx+=x*X+y*Y;sxy+=x*Y-y*X;saa+=x*x+y*y});const th=Math.atan2(sxy,sxx),sc=Math.hypot(sxx,sxy)/saa;const T=q=>{const x=q[0]-ca[0],y=q[1]-ca[1];const X=cb[0]+sc*(x*Math.cos(th)-y*Math.sin(th)),Y=cb[1]+sc*(x*Math.sin(th)+y*Math.cos(th));return [lat0+Y/364000,lng0+X/272500]};const res=A.map((p,i)=>{const t=T(p);return +Math.hypot((t[1]-pairs[i][3])*272500,(t[0]-pairs[i][2])*364000).toFixed(1)});return {a:[T([0,0]),T([W,0]),T([0,-H])],scale:+sc.toFixed(3),rot:+(th*180/Math.PI).toFixed(1),res,e}};
+window.NEWE=(n,a,note,conf,extra)=>{const S=JSON.parse(localStorage.SHEETS2);const id=IDF(n);const e=Object.assign({id,r:'full',a,b:BB(a)},extra||{});S.push(e);localStorage.SHEETS2=JSON.stringify(S);const R=JSON.parse(localStorage.ROUGH);R[n+(e.part||'')]=[note,conf];localStorage.ROUGH=JSON.stringify(R);return S.length};
+window.IDF=n=>(n<=96?'g02629190101:02629_01_1901-':'g02629190102:02629_02_1901-')+String(n).padStart(4,'0');
+window.VIEW=async(n,crop,w)=>{let d=document.getElementById('SV');if(d)d.remove();d=document.createElement('div');d.id='SV';d.style.cssText='position:fixed;inset:0;z-index:99999;background:#fff;overflow:hidden';const im=new Image();im.src=SK.url(n,crop||'full',w||1400);im.style.cssText='max-height:100%;max-width:100%;';d.appendChild(im);document.body.appendChild(d);await new Promise(r=>{im.onload=r;setTimeout(r,15000)});return [im.width,im.height]};
+window.UNVIEW=()=>{const d=document.getElementById('SV');d&&d.remove()};
+
+window.ROTP=(a,deg,c)=>{const t=deg*Math.PI/180,co=Math.cos(t),si=Math.sin(t);return a.map(p=>{const x=(p[1]-c[1])*272500,y=(p[0]-c[0])*364000;const X=x*co-y*si,Y=x*si+y*co;return [c[0]+Y/364000,c[1]+X/272500]})};
+window.NBA=(a,du,dv)=>{const P=(u,v)=>[a[0][0]+u*(a[1][0]-a[0][0])+v*(a[2][0]-a[0][0]),a[0][1]+u*(a[1][1]-a[0][1])+v*(a[2][1]-a[0][1])];return [P(du,dv),P(1+du,dv),P(du,1+dv)]};
+
+window.SETA=(n,part,a,note,conf)=>{const S=JSON.parse(localStorage.SHEETS2);const i=S.findIndex(e=>e.id===IDF(n)&&(part?e.part===part:!e.part||e.part==='a'));const k='BAKI_'+n+(part||'');if(!localStorage[k])localStorage[k]=JSON.stringify(S[i].a);S[i].a=a;S[i].b=BB(a);localStorage.SHEETS2=JSON.stringify(S);const R=JSON.parse(localStorage.ROUGH);R[n+(part||'')]=[note,conf];localStorage.ROUGH=JSON.stringify(R);return i};
