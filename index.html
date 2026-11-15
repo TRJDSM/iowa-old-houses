@@ -134,7 +134,7 @@ box.innerHTML='<div style="padding:6px 10px;color:#666;font-size:12px">On the 19
 [].forEach.call(box.querySelectorAll('[data-i]'),function(el){el.onclick=function(){var x=list[+el.getAttribute('data-i')];hide();window.ON1901&&window.ON1901();M.setView([x.lat,x.lng],19);if(mk)M.removeLayer(mk);mk=L.circleMarker([x.lat,x.lng],{radius:22,color:'#e11',weight:3,fill:false}).addTo(M)}})}
 function dist(a,b,c,d){var x=(d-b)*272500,y=(c-a)*364000;return Math.sqrt(x*x+y*y)}
 function run(){var v=q.value.trim();if(v.length<3||/^(sheet|page|pg|p|s|#)\s*#?\s*\d{1,3}$/i.test(v)){hide();return}load(function(){var Q=norm(v),out=[],m=Q.match(/^(\d{1,4}) (.+)$/);
-if(m){var num=+m[1],w=m[2];var near=[];D.N.forEach(function(n){if(n[0]!==num)return;for(var i=0;i<D.T.length;i++){if(D.Tn[i].indexOf(w)>=0&&dist(n[1],n[2],D.T[i][1],D.T[i][2])<700){out.push({label:'#'+num+' near '+D.T[i][0],lat:n[1],lng:n[2],s:n[3]});break}}})}
+if(m){var num=+m[1],w=m[2];var near=[];D.N.forEach(function(n){if(n[0]!==num)return;for(var i=0;i<D.T.length;i++){if(D.Tn[i].indexOf(w)>=0&&dist(n[1],n[2],D.T[i][1],D.T[i][2])<1500){out.push({label:'#'+num+' near '+D.T[i][0],lat:n[1],lng:n[2],s:n[3]});break}}})}
 else if(/^\d{2,4}$/.test(Q)){D.N.forEach(function(n){if(n[0]===+Q)out.push({label:'#'+Q+' (1901 house number)',lat:n[1],lng:n[2],s:n[3]})})}
 else{for(var i=0;i<D.T.length&&out.length<40;i++)if(D.Tn[i].indexOf(Q)>=0)out.push({label:D.T[i][0],lat:D.T[i][1],lng:D.T[i][2],s:D.T[i][3]})}
 show(out.slice(0,12))})}
