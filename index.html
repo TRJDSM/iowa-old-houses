@@ -58,7 +58,7 @@ const street=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{m
 const hybrid=L.layerGroup([sat,lab,lab2]);
 const M=L.map("map",{zoomControl:true,layers:[hybrid]}).setView([41.66,-93.62],12);try{const v=JSON.parse(localStorage.getItem("OIH_view")||"null");if(v&&v.z)M.setView([v.la,v.lo],v.z,{animate:false})}catch(e){}M.on("moveend",()=>{try{const c=M.getCenter();localStorage.setItem("OIH_view",JSON.stringify({la:c.lat,lo:c.lng,z:M.getZoom()}))}catch(e){}});
 const hybridS=L.layerGroup([sum,lab,lab2]);L.control.layers({"Leaf-off photo (2023–25)":hybrid,"Summer photo":hybridS,"Street map":street},null,{position:"bottomleft"}).addTo(M);
-const CL=L.markerClusterGroup({disableClusteringAtZoom:19,maxClusterRadius:z=>z>=15?22:40,spiderfyOnMaxZoom:true,showCoverageOnHover:false,chunkedLoading:true});M.addLayer(CL);
+const CL=L.markerClusterGroup({disableClusteringAtZoom:17,maxClusterRadius:z=>z>=15?16:40,spiderfyOnMaxZoom:true,showCoverageOnHover:false,chunkedLoading:true});M.addLayer(CL);
 let on=new Set(DEC.map(d=>d[0]));
 $=id=>document.getElementById(id);
 $("dec").innerHTML=DEC.map(([k,l])=>`<button class="on" data-k="${k}" style="background:${COL[k]}">${l}</button>`).join("");
@@ -95,7 +95,7 @@ _up(){const m=this._m,c=this._cv;if(!m||!c)return;const sz=m.getSize(),P=0.25,r=
 const z=m.getZoom(),vb=L.latLngBounds(m.containerPointToLatLng(tl),m.containerPointToLatLng(tl.add(full)));
 for(const t of this._S){if(z<14||!vb.intersects(t.bb)){this._drop(t);continue}
 const a=m.latLngToContainerPoint(t.c[0]),b=m.latLngToContainerPoint(t.c[1]),sw=a.distanceTo(b)*r,w=Math.max(150,Math.min(Math.round(2400*t.fr),Math.round(sw*1.25/100)*100||150));
-const have=t.img?t.img.naturalWidth:0;if(t.want===w||(have&&have>=w*0.8&&have<=w*1.6))continue;t.want=w;if(t.pend){t.pend.onload=null;t.pend.src=""}const im=new Image();t.pend=im;im.onload=()=>{if(t.pend!==im)return;if(t.img)t.img.src="";t.img=im;t.pend=null;this._draw()};im.src=t.u.replace("/2400,/","/"+w+",/")}
+const have=t.img?t.img.naturalWidth:0;if(t.want===w||(have&&have>=w*0.8&&have<=w*1.6))continue;t.want=w;if(t.pend){t.pend.onload=null;t.pend.src=""}const im=new Image();im.crossOrigin="anonymous";t.pend=im;im.onload=()=>{if(t.pend!==im)return;if(t.img)t.img.src="";t.img=im;t.pend=null;this._draw()};im.src=t.u.replace("/2400,/","/"+w+",/")}
 this._draw()},
 _draw(){const c=this._cv,m=this._m;if(!c||!m)return;const x=c.getContext("2d"),r=this._r,mn=this._mn;x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,c.width,c.height);x.globalCompositeOperation="darken";
 for(const t of this._S){const i=t.img;if(!i||!i.naturalWidth)continue;const a=m.latLngToLayerPoint(t.c[0]).subtract(mn),b=m.latLngToLayerPoint(t.c[1]).subtract(mn),d=m.latLngToLayerPoint(t.c[2]).subtract(mn),w=i.naturalWidth,h=i.naturalHeight;x.setTransform(r*(b.x-a.x)/w,r*(b.y-a.y)/w,r*(d.x-a.x)/h,r*(d.y-a.y)/h,r*a.x,r*a.y);try{if(t.k){x.save();x.beginPath();t.k.forEach((p,j)=>x[j?"lineTo":"moveTo"](p[0]*w,p[1]*h));x.closePath();x.clip();x.drawImage(i,0,0);x.restore()}else x.drawImage(i,0,0)}catch(e){}}x.globalCompositeOperation="source-over";x.setTransform(1,0,0,1,0,0)}});
@@ -110,7 +110,7 @@ let LQ=0;async function lotLoad(){if(!lotOn||M.getZoom()<16)return;const myq=++L
 function LOT(on){lotOn=on;if(on){if(!M.hasLayer(LG))LG.addTo(M);lotLoad()}else M.removeLayer(LG)}M.on("moveend",lotLoad);const st=document.createElement("style");document.head.appendChild(st);
 function sty(){st.textContent=".sanb{filter:saturate(1.4)}";LOT(gc.checked)}
 function set(k){try{localStorage.setItem("OIH_ov",k)}catch(e){}if(LY[cur])M.removeLayer(LY[cur]);cur=k;if(LY[k])LY[k].addTo(M);P.style.mixBlendMode="normal";P.style.opacity=f.value/100;D.querySelectorAll(".bt button").forEach(b=>b.classList.toggle("on",b.dataset.k===k));D.querySelector(".om").classList.toggle("on",k!=="none");nt.textContent=NOTE[k];if(k==="s1901"){gc.checked=true;LOT(true);const SB2=L.latLngBounds(SHEETS.flatMap(s=>s.a||s.b));if(!M.getBounds().intersects(SB2)||M.getZoom()<14)M.setView(SB2.getCenter(),Math.max(15,M.getBoundsZoom(SB2)),{animate:false})}}
-D.querySelector(".bt").onclick=e=>{const b=e.target.closest("button");if(b)set(b.dataset.k)};
+window.OV={LY,set,get cur(){return cur},P,D,f,M,B:{hybrid,hybridS,street}};D.querySelector(".bt").onclick=e=>{const b=e.target.closest("button");if(b)set(b.dataset.k)};
 D.querySelector(".om").onclick=()=>D.classList.toggle("open");
 f.oninput=()=>{P.style.opacity=f.value/100};gc.onchange=sty;sty();try{const k0=localStorage.getItem("OIH_ov");if(k0&&k0!=="none"&&LY[k0])set(k0)}catch(e){};})();</script><script>(function(){var q=document.getElementById('q');var ol=null;var RX=/^(?:sheet|page|pg|p|s|#)\s*#?\s*(\d{1,3})$/i;
 function sn(e){return +e.id.slice(-4)}
@@ -139,7 +139,123 @@ if(m){var num=+m[1],w=m[2];var near=[];D.N.forEach(function(n){if(n[0]!==num)ret
 else if(/^\d{2,4}$/.test(Q)){D.N.forEach(function(n){if(n[0]===+Q)out.push({label:'#'+Q+' (1901 house number)',lat:n[1],lng:n[2],s:n[3]})})}
 else{for(var i=0;i<D.T.length&&out.length<40;i++)if(D.Tn[i].indexOf(Q)>=0)out.push({label:D.T[i][0],lat:D.T[i][1],lng:D.T[i][2],s:D.T[i][3]})}
 show(out.slice(0,12))})}
-var tm;q.addEventListener('input',function(){clearTimeout(tm);tm=setTimeout(run,350)});q.addEventListener('focus',function(){if(q.value.trim().length>=3)run()});document.addEventListener('click',function(e){if(box&&!box.contains(e.target)&&e.target!==q)hide()});})();</script><script>(function(){function init(){var D=document.querySelector('.omc');if(!D)return setTimeout(init,300);var bt=D.querySelector('.bt'),sl=D.querySelector('.sl');if(!bt||!sl)return;var st=document.createElement('style');st.textContent='.omc .bt{display:none!important}.omc .nt{font-size:11px;max-height:2.6em;overflow:hidden;color:#555}.omc select.oms{width:100%;font:600 14px system-ui;padding:6px;border:1px solid #ccc;border-radius:6px;margin-bottom:6px;background:#f6f6f6;color:#111}';document.head.appendChild(st);var s=document.createElement('select');s.className='oms';[].forEach.call(bt.querySelectorAll('button'),function(b){var o=document.createElement('option');o.value=b.getAttribute('data-k');o.textContent=b.textContent==='Off'?'Off (today only)':b.textContent;s.appendChild(o)});sl.parentNode.insertBefore(s,sl);s.onchange=function(){var b=bt.querySelector('button[data-k="'+s.value+'"]');if(b)b.click()};function sync(){var on=bt.querySelector('button.on');if(on&&s.value!==on.getAttribute('data-k'))s.value=on.getAttribute('data-k')}new MutationObserver(sync).observe(bt,{subtree:true,attributes:true,attributeFilter:['class']});sync()}init()})();</script></body>
+var tm;q.addEventListener('input',function(){clearTimeout(tm);tm=setTimeout(run,350)});q.addEventListener('focus',function(){if(q.value.trim().length>=3)run()});document.addEventListener('click',function(e){if(box&&!box.contains(e.target)&&e.target!==q)hide()});})();</script><script>(function(){function init(){var D=document.querySelector('.omc');if(!D)return setTimeout(init,300);var bt=D.querySelector('.bt'),sl=D.querySelector('.sl');if(!bt||!sl)return;var st=document.createElement('style');st.textContent='.omc .bt{display:none!important}.omc .nt{font-size:11px;max-height:2.6em;overflow:hidden;color:#555}.omc select.oms{width:100%;font:600 14px system-ui;padding:6px;border:1px solid #ccc;border-radius:6px;margin-bottom:6px;background:#f6f6f6;color:#111}';document.head.appendChild(st);var s=document.createElement('select');s.className='oms';[].forEach.call(bt.querySelectorAll('button'),function(b){var o=document.createElement('option');o.value=b.getAttribute('data-k');o.textContent=b.textContent==='Off'?'Off (today only)':b.textContent;s.appendChild(o)});sl.parentNode.insertBefore(s,sl);s.onchange=function(){var b=bt.querySelector('button[data-k="'+s.value+'"]');if(b)b.click()};function sync(){var on=bt.querySelector('button.on');if(on&&s.value!==on.getAttribute('data-k'))s.value=on.getAttribute('data-k')}new MutationObserver(sync).observe(bt,{subtree:true,attributes:true,attributeFilter:['class']});sync()}init()})();</script><script id="addonui">(function(){
+var O=window.OV;if(!O||!O.M)return;var MP=O.M,BB=O.B||{};
+var LY=O.LY,D=O.D;
+function $q(s,r){return (r||document).querySelector(s)}
+var NM={none:'Today'};D.querySelectorAll('.bt button').forEach(function(b){NM[b.dataset.k]=b.textContent.trim()});
+var PRI={rail:6,glo:5,road:4,s1901:3,s1884:3,a1875:2};function pr(k){return PRI[k]||1}
+var GOOD=['s1901','s1884','rail','glo','road','a1875'];
+MP.createPane('old2');var P1=O.P,P2=MP.getPane('old2');
+var z1=parseInt(getComputedStyle(P1).zIndex,10);if(!(z1>0))z1=400;
+var k2='none',L2=null;
+var css=document.createElement('style');
+css.textContent=[
+'.obar{display:none;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.3);padding:8px 10px;width:calc(100vw - 96px);max-width:470px;font:600 14px system-ui;color:#1c1c1c}',
+'.omc.act .obar{display:block}.omc.act .row{display:none}',
+'.obar .l{display:flex;align-items:center;gap:8px;margin:2px 0}',
+'.obar .nm{flex:0 0 auto;max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid #ccd;background:#f3f5f9;border-radius:8px;padding:8px 10px;font:600 14px system-ui;color:#1c1c1c}',
+'.obar input[type=range]{flex:1 1 auto;min-width:60px;height:30px}',
+'.obar .x{flex:0 0 auto;width:34px;height:34px;border-radius:17px;border:1px solid #ccd;background:#fff;font:700 18px system-ui;color:#555;line-height:30px;padding:0}',
+'.obar .add{border:0;background:none;color:#1f5fbf;font:600 14px system-ui;padding:6px 2px}',
+'.obar .pk{display:none;flex-wrap:wrap;gap:6px;margin-top:6px}.obar.pick .pk{display:flex}',
+'.obar .pk button{border:1px solid #ccd;background:#f7f8fb;border-radius:8px;padding:7px 9px;font:600 13px system-ui;color:#1c1c1c}',
+'.obar .pk button.g{border-color:#1f5fbf}.obar .pk small{display:block;width:100%;color:#666;font-weight:500}',
+'.obar .tip{color:#666;font-weight:500;font-size:12px;margin-top:2px}',
+'.tbx{position:fixed;right:10px;top:132px;z-index:1200;display:flex;flex-direction:column;gap:8px}',
+'.tbx button{width:44px;height:44px;border-radius:22px;border:0;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;padding:0;cursor:pointer}',
+'.tbx svg{width:22px;height:22px;stroke:#1c1c1c;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}',
+'.bpop{position:fixed;right:62px;top:132px;z-index:1200;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.3);padding:6px;display:none;min-width:200px;font:600 14px system-ui}',
+'.bpop.on{display:block}.bpop button{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 12px;border-radius:8px;font:600 14px system-ui;color:#1c1c1c}',
+'.bpop button.on{background:#e8eefb;color:#1f3f8f}.bpop small{display:block;font-weight:500;color:#666;font-size:12px}',
+'body.snapmode .leaflet-control-container,body.snapmode .tbx,body.snapmode .bpop,body.snapmode #bar,body.snapmode #loc{visibility:hidden!important}',
+'.snapbar{position:fixed;left:50%;transform:translateX(-50%);top:12px;z-index:3000;background:#fff;border-radius:14px;box-shadow:0 3px 14px rgba(0,0,0,.35);padding:10px 12px;display:none;font:600 14px system-ui;color:#1c1c1c;max-width:94vw}',
+'body.snapmode .snapbar{display:block}.snapbar .t{margin-bottom:8px;font-weight:500;color:#444}',
+'.snapbar .b{display:flex;gap:6px;flex-wrap:wrap}.snapbar button{border:1px solid #1f5fbf;background:#fff;color:#1f5fbf;border-radius:10px;padding:9px 12px;font:600 14px system-ui}',
+'.snapbar button.p{background:#1f5fbf;color:#fff}.snapbar .st{margin-top:6px;color:#666;font-size:12px;font-weight:500}',
+'.yr{position:relative}.yr::before{content:"";position:absolute;left:-10px;right:-10px;top:-12px;bottom:-12px}'
+].join('');
+document.head.appendChild(css);
+var bar=document.createElement('div');bar.className='obar';
+bar.innerHTML='<div class="l l1"><button class="nm n1" title="Change map"></button><input type="range" class="s1" min="0" max="100"><button class="x x1" title="Turn off">×</button></div>'+
+'<div class="l l2" style="display:none"><button class="nm n2" title="Change map"></button><input type="range" class="s2" min="0" max="100" value="60"><button class="x x2" title="Remove">×</button></div>'+
+'<button class="add">+ Add a second map on top</button><div class="tip"></div><div class="pk"></div>';
+D.appendChild(bar);
+L.DomEvent.disableClickPropagation(bar);L.DomEvent.disableScrollPropagation(bar);
+var s1=$q('.s1',bar),s2=$q('.s2',bar);
+function order(){P2.style.zIndex=(pr(k2)>=pr(O.cur))?(z1+1):(z1-1)}
+function removeSecond(){if(L2){MP.removeLayer(L2);L2.options.pane='old'}L2=null;k2='none';try{localStorage.removeItem('OIH_ov2')}catch(e){}}
+function addSecond(k){if(!LY[k]||k===O.cur)return;removeSecond();L2=LY[k];L2.options.pane='old2';L2.addTo(MP);k2=k;
+ var both=GOOD.indexOf(k)<0&&GOOD.indexOf(O.cur)<0;s2.value=both?50:70;P2.style.opacity=s2.value/100;order();try{localStorage.setItem('OIH_ov2',k)}catch(e){}sync()}
+function sync(){var k=O.cur;if(k2!=='none'&&(k==='none'||k===k2))removeSecond();
+ var act=k!=='none';D.classList.toggle('act',act);if(!act){bar.classList.remove('pick');return}
+ $q('.n1',bar).textContent=NM[k]||k;s1.value=O.f.value;
+ var has2=k2!=='none';$q('.l2',bar).style.display=has2?'flex':'none';$q('.add',bar).style.display=has2?'none':'block';
+ if(has2){$q('.n2',bar).textContent=NM[k2]||k2;order()}
+ var tip='';if(has2){var top=pr(k2)>=pr(k)?k2:k;tip=(NM[top]||top)+' is drawn on top. Slide either bar to fade it.';if(GOOD.indexOf(k)<0&&GOOD.indexOf(k2)<0)tip='Both are full photos/maps, so the top one covers the other. Use its slider to blend them.'}
+ $q('.tip',bar).textContent=tip}
+function picker(){var k=O.cur,keys=Object.keys(NM).filter(function(x){return x!=='none'&&x!==k&&LY[x]});
+ keys.sort(function(a,b){return (GOOD.indexOf(b)>=0)-(GOOD.indexOf(a)>=0)});
+ var pk=$q('.pk',bar);pk.innerHTML='<small>Maps marked ★ look best layered on top of another map.</small>'+keys.map(function(x){var g=GOOD.indexOf(x)>=0;return '<button data-k="'+x+'" class="'+(g?'g':'')+'">'+(g?'★ ':'')+NM[x]+'</button>'}).join('');}
+bar.addEventListener('click',function(e){var t=e.target;
+ if(t.closest('.n1')||t.closest('.n2')){bar.classList.remove('pick');D.classList.add('open');return}
+ if(t.closest('.x1')){var b=D.querySelector('.bt button[data-k="none"]');if(b)b.click();return}
+ if(t.closest('.x2')){removeSecond();sync();return}
+ if(t.closest('.add')){picker();bar.classList.toggle('pick');return}
+ var pb=t.closest('.pk button');if(pb){bar.classList.remove('pick');addSecond(pb.dataset.k)}});
+s1.addEventListener('input',function(){O.f.value=s1.value;O.f.dispatchEvent(new Event('input'))});
+s2.addEventListener('input',function(){P2.style.opacity=s2.value/100});
+O.f.addEventListener('input',function(){s1.value=O.f.value});
+function after(){setTimeout(function(){if(O.cur!=='none')D.classList.remove('open');sync()},0)}
+D.querySelector('.bt').addEventListener('click',function(e){if(e.target.closest('button'))after()});
+var oms=D.querySelector('.oms');if(oms)oms.addEventListener('change',after);
+setTimeout(function(){sync();try{var k=localStorage.getItem('OIH_ov2');if(k&&O.cur!=='none')addSecond(k)}catch(e){}if(O.cur!=='none')D.classList.remove('open')},600);
+var BASES=[
+ {id:'leaf',n:'Photo – leaf-off',s:'2023–25, best for seeing houses',l:BB.hybrid},
+ {id:'sum',n:'Photo – summer',s:'Recent summer aerial',l:BB.hybridS},
+ {id:'street',n:'Street map',s:'OpenStreetMap',l:BB.street},
+ {id:'topo',n:'Topographic',s:'Esri world topo',l:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:19,attribution:'Esri'})},
+ {id:'gray',n:'Light gray',s:'Plain background, best for old maps',l:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:16,attribution:'Esri'})},
+ {id:'blank',n:'No background',s:'Old map only',l:L.layerGroup()}
+];
+function curBase(){for(var i=0;i<BASES.length;i++)if(BASES[i].l&&MP.hasLayer(BASES[i].l))return BASES[i].id;return ''}
+function setBase(id){BASES.forEach(function(b){if(b.l&&MP.hasLayer(b.l))MP.removeLayer(b.l)});var b=BASES.filter(function(x){return x.id===id})[0];if(b&&b.l){b.l.addTo(MP);if(b.l.bringToBack)b.l.bringToBack()}try{localStorage.setItem('OIH_base',id)}catch(e){}drawB()}
+var tbx=document.createElement('div');tbx.className='tbx';
+tbx.innerHTML='<button class="tb-b" title="Background map" aria-label="Background map"><svg viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="m2 13 10 5 10-5"/><path d="m2 17.5 10 5 10-5"/></svg></button>'+
+'<button class="tb-s" title="Take a picture of the map" aria-label="Take a picture of the map"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="4"/></svg></button>';
+document.body.appendChild(tbx);function placeT(){var h=document.getElementById('bar');var t=h?Math.round(h.getBoundingClientRect().bottom)+10:132;tbx.style.top=t+'px';bp.style.top=t+'px'}window.addEventListener('resize',function(){setTimeout(placeT,50)});
+var bp=document.createElement('div');bp.className='bpop';document.body.appendChild(bp);
+function drawB(){var c=curBase();bp.innerHTML=BASES.map(function(b){return '<button data-b="'+b.id+'" class="'+(b.id===c?'on':'')+'">'+b.n+'<small>'+b.s+'</small></button>'}).join('')}
+drawB();placeT();setTimeout(placeT,800);
+$q('.tb-b',tbx).onclick=function(){drawB();bp.classList.toggle('on')};
+bp.onclick=function(e){var b=e.target.closest('button[data-b]');if(b){setBase(b.dataset.b);bp.classList.remove('on')}};
+MP.on('click',function(){bp.classList.remove('on')});
+var lc=document.querySelector('.leaflet-control-layers');if(lc)lc.style.display='none';
+try{var b0=localStorage.getItem('OIH_base');if(b0&&b0!==curBase())setBase(b0)}catch(e){}
+var sb=document.createElement('div');sb.className='snapbar';
+sb.innerHTML='<div class="t">Move the map to frame your picture, then choose:</div><div class="b"><button class="p" data-a="png">Save picture</button><button data-a="pdf">Save PDF</button><button data-a="share">Share</button><button data-a="x">Cancel</button></div><div class="st"></div>';
+document.body.appendChild(sb);
+function ld(src){return new Promise(function(res,rej){var s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
+var LIBS=null;function libs(){if(!LIBS)LIBS=Promise.all([window.html2canvas?1:ld('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),window.jspdf?1:ld('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')]);return LIBS}
+function stamp(){var c=MP.getCenter(),k=O.cur,t=[];if(k!=='none')t.push(NM[k]);if(k2!=='none')t.push(NM[k2]);return 'Old Iowa Houses Map · '+c.lat.toFixed(5)+', '+c.lng.toFixed(5)+(t.length?' · '+t.join(' + '):'')+' · '+new Date().toLocaleDateString()}
+async function shot(){var st=$q('.st',sb);st.textContent='Making the picture…';await libs();
+ var el=document.getElementById('map');
+ var c=await window.html2canvas(el,{useCORS:true,backgroundColor:'#ffffff',logging:false,scale:Math.min(2,window.devicePixelRatio||1),ignoreElements:function(n){return n.classList&&(n.classList.contains('leaflet-control-container'))}});
+ var pad=Math.round(c.width/40),fh=Math.round(c.width/45)+pad,o=document.createElement('canvas');o.width=c.width;o.height=c.height+fh;var x=o.getContext('2d');
+ x.fillStyle='#fff';x.fillRect(0,0,o.width,o.height);x.drawImage(c,0,0);x.fillStyle='#333';x.font='600 '+Math.round(c.width/60)+'px system-ui';x.textBaseline='middle';x.fillText(stamp(),pad/2,c.height+fh/2);
+ st.textContent='';return o}
+function dl(blob,name){var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},2000)}
+function fname(ext){var d=new Date();return 'old-iowa-map-'+d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()+'.'+ext}
+var SHF=null;sb.addEventListener('click',async function(e){var b=e.target.closest('button[data-a]');if(!b)return;var a=b.dataset.a,st=$q('.st',sb);
+ if(a==='share2'){if(SHF)navigator.share({files:[SHF],title:'Old Iowa Houses Map'}).catch(function(){});return}
+ if(a==='x'){document.body.classList.remove('snapmode');return}
+ try{var c=await shot();
+  if(a==='png'){c.toBlob(function(bl){dl(bl,fname('png'))},'image/png')}
+  else if(a==='pdf'){var J=window.jspdf.jsPDF,land=c.width>c.height,doc=new J({orientation:land?'landscape':'portrait',unit:'pt',format:'letter'});var W=doc.internal.pageSize.getWidth()-48,H=doc.internal.pageSize.getHeight()-48,s=Math.min(W/c.width,H/c.height);doc.addImage(c.toDataURL('image/jpeg',0.92),'JPEG',24+(W-c.width*s)/2,24,c.width*s,c.height*s);doc.save(fname('pdf'))}
+  else if(a==='share'){c.toBlob(function(bl){var f=new File([bl],fname('png'),{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[f]})){SHF=f;st.innerHTML='Picture ready. <button class="p" data-a="share2">Share now</button>'}else{dl(bl,fname('png'));st.textContent='Sharing isn’t supported here, so it was saved instead.'}},'image/png')}
+ }catch(err){st.textContent='Could not make the picture: '+(err&&err.message||err)}});
+$q('.tb-s',tbx).onclick=function(){bp.classList.remove('on');document.body.classList.add('snapmode');$q('.st',sb).textContent='';libs()};
+})();</script></body>
 <script>(function(){let dp=null;M.on("contextmenu",e=>{const la=e.latlng.lat.toFixed(6),lo=e.latlng.lng.toFixed(6);if(dp)M.removeLayer(dp);dp=L.marker(e.latlng).addTo(M);dp.bindPopup('<div style="font:13px system-ui;min-width:170px"><b>Dropped pin</b><div style="color:#666;font-size:11px;margin:2px 0 8px">'+la+', '+lo+'</div><div style="display:flex;flex-direction:column;gap:6px"><a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+la+','+lo+'" target="_blank" rel="noopener">Street View here</a><a href="https://earth.google.com/web/@'+la+','+lo+',300a,250d,35y,0h,45t,0r" target="_blank" rel="noopener">Google Earth (3D)</a><a href="https://www.google.com/maps/search/?api=1&query='+la+','+lo+'" target="_blank" rel="noopener">Google Maps</a><a href="#" onclick="return false" class="dprm">Remove pin</a></div></div>').openPopup();dp.on("popupopen",()=>{const r=document.querySelector(".dprm");if(r)r.onclick=()=>{M.removeLayer(dp);dp=null;return false}});const r=document.querySelector(".dprm");if(r)r.onclick=()=>{M.removeLayer(dp);dp=null;return false}})})();</script><style>#cty,#typ,#cnt{display:none!important}#mnu{flex:0 0 auto;width:44px;border:0;border-radius:10px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);font:600 20px system-ui;color:#111;cursor:pointer}#mnd{position:absolute;right:0;top:52px;z-index:1001;background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.35);padding:6px;display:none;min-width:170px}#mnd.open{display:block}#mnd button{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 12px;font:600 14px system-ui;color:#111;border-radius:6px;cursor:pointer}#mnd button:hover{background:#f1f1f1}#bar .row{position:relative}</style>
 <script>(function(){const r=document.querySelector("#bar .row");const b=document.createElement("button");b.id="mnu";b.setAttribute("aria-label","Menu");b.textContent="☰";r.appendChild(b);const d=document.createElement("div");d.id="mnd";d.innerHTML='<button data-a="pins">Hide pins</button><button data-a="hn">Hide house numbers</button><button data-a="dl">Download backup</button>';let BK=null;const getBK=async()=>{let t=await (await fetch(location.pathname+"?b="+Date.now())).text();const i=t.lastIndexOf("</html>");if(i>0)t=t.slice(0,i+7)+"\n";BK=t};b.addEventListener("click",()=>{if(!BK)getBK()});setTimeout(()=>{d.querySelector('[data-a=dl]').onclick=()=>{if(!BK){alert("Preparing the backup, tap Download backup again in a few seconds.");getBK();return}d.classList.remove("open");const nm="iowa-old-houses-"+new Date().toISOString().slice(0,10)+".html";const f=new File([BK],nm,{type:"text/html"});if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:nm}).catch(()=>{});return}const u=URL.createObjectURL(f);const x=document.createElement("a");x.href=u;x.download=nm;document.body.appendChild(x);x.click();setTimeout(()=>URL.revokeObjectURL(u),8000)}},0);r.appendChild(d);b.onclick=e=>{e.stopPropagation();d.classList.toggle("open")};document.addEventListener("click",e=>{if(!d.contains(e.target))d.classList.remove("open")});d.querySelector('[data-a=pins]').onclick=e=>{const on=M.hasLayer(CL);if(on)M.removeLayer(CL);else M.addLayer(CL);e.target.textContent=on?"Show pins":"Hide pins";d.classList.remove("open")};L.DomEvent.disableClickPropagation(r)})();</script><style>.hnl{color:#fff;font:700 11px system-ui;text-shadow:0 0 2px #000,0 0 3px #000,0 0 1px #000;white-space:nowrap;transform:translate(-50%,9px);pointer-events:auto;cursor:pointer;padding:2px 3px}.omx{position:absolute;top:4px;right:4px;border:0;background:#eee;border-radius:6px;width:26px;height:22px;font:700 14px system-ui;cursor:pointer;color:#333;line-height:20px;padding:0}.omc{position:relative}</style><script>(function(){M.createPane("hnums");const HP=M.getPane("hnums");HP.style.zIndex=650;HP.style.pointerEvents="none";const G=L.layerGroup().addTo(M);const SEEN={};let on=true;const SU="https://services2.arcgis.com/FiaPA4ga0iQKduv3/arcgis/rest/services/USA_Structures_View/FeatureServer/0/query";
 function vis(){const v=on&&M.getZoom()>=18;HP.style.display=v?"":"none";return v}
