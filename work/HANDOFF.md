@@ -36,7 +36,7 @@ All work ran in Tyler's Chrome through the Claude in Chrome extension.
 
 ### Workbench tabs and storage
 
-- **Tabs:** iowa-old-houses.netlify.app/blank-x and /blank-y. These are blank 404 pages used as a workbench. If a tab freezes, close it and open a new tab to the same URL.
+- **Tabs:** https://trjdsm.github.io/iowa-old-houses/work/blank.html?x and ?y (a blank page in the repo). Moved here Nov 16 because the old Netlify workbench (iowa-old-houses.netlify.app) became login-protected; all localStorage was copied over. Don't use GitHub's 404 pages as a workbench: their security policy blocks scripts and fetch. If a tab freezes, close it and open a new tab to the same URL.
 - **localStorage keys on that origin:**
   - MASTER5: the full app HTML, with owner names.
   - SHEETS2, ROUGH, DIMS, OLD_A, CP01, CP01R, AUD01, OFF01, LOTAPPLIED, LOTPENDING, ORDER01.
@@ -51,7 +51,7 @@ All work ran in Tyler's Chrome through the Claude in Chrome extension.
 
 ### Loading the app and tools
 
-- **Load the app in a workbench tab:** navigate to blank-y first (a fresh page is needed or const redeclare errors happen). Then `document.open();document.write(localStorage.MASTER5);document.close()` and wait about 5 s.
+- **Load the app in a workbench tab:** navigate to work/blank.html?y first (a fresh page is needed or const redeclare errors happen). Then `document.open();document.write(localStorage.MASTER5);document.close()` and wait about 5 s.
 - **Load the tools on a blank page:** `try{eval(localStorage.SANBKIT)}catch(e){};eval(localStorage.ALK)`.
 
 ### Publishing
@@ -61,7 +61,7 @@ All work ran in Tyler's Chrome through the Claude in Chrome extension.
 2. Navigate to github.com/TRJDSM/iowa-old-houses/upload/main. **Wait about 4 s** (GitHub soft-redirects; JS run too early fails with "page navigated").
 3. Run JS that puts the files into `input[type=file]` with a DataTransfer and dispatches `change`. **Wait about 10 s.**
 4. Set `#commit-summary-input` and click "Commit changes". Check that the file names appear first. **Wait about 7 s.**
-5. Navigate back to netlify, clear window.name, and verify with `api.github.com/repos/TRJDSM/iowa-old-houses/commits?per_page=1&t=<now>`.
+5. Navigate back to work/blank.html, clear window.name, and verify with `api.github.com/repos/TRJDSM/iowa-old-houses/commits?per_page=1&t=<now>`.
 
 Never navigate inside the same JS call.
 
