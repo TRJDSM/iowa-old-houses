@@ -287,16 +287,16 @@ function compose(title,opt){var im=SHOT.img,W=Math.max(im.width,900),k=W/im.widt
  return c}
 function showResult(){rbox.innerHTML='<div class="rh"><span>Your picture</span><button data-a="close" aria-label="Close">✕</button></div><img class="rimg" alt="Map picture"><input class="rt" type="text" placeholder="Add a title (optional)" maxlength="80"><div class="opts"><label><input type="checkbox" class="o-sc" checked style="width:auto;margin:0">Scale bar</label><label><input type="checkbox" class="o-n" checked style="width:auto;margin:0">North arrow</label></div><div class="rb"><button class="p sh" data-a="share">Share</button><a class="btn png" download>Save picture</a><a class="btn pdf" download>Save PDF</a><button data-a="again">Retake</button></div><div class="rtip"></div>';
  if(!(navigator.canShare&&navigator.share))$q('.sh',rbox).style.display='none';
- $q('.rtip',rbox).textContent=/iPhone|iPad/.test(navigator.userAgent)?'On iPhone: tap Share, then Save Image to put it in Photos. Save PDF opens it so you can share or print.':'Save PDF makes a letter-size page you can print.';
+ $q('.rtip',rbox).textContent=/iPhone|iPad/.test(navigator.userAgent)?'Save picture opens your phone menu: tap Save Image to put it in Photos. Save PDF: tap Save to Files, or Print.':'Save PDF makes a letter-size page you can print.';
  var t=null;$q('.rt',rbox).addEventListener('input',function(){clearTimeout(t);t=setTimeout(build,350)});
  $q('.o-sc',rbox).onchange=build;$q('.o-n',rbox).onchange=build;build()}
-var SHF=null;
+var SHF=null,SHP=null,IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 function build(){URLS.forEach(function(u){URL.revokeObjectURL(u)});URLS=[];var title=($q('.rt',rbox)||{}).value||'';title=title.trim();
  var c=compose(title,{scale:$q('.o-sc',rbox).checked,north:$q('.o-n',rbox).checked});
  c.toBlob(function(bl){var u=URL.createObjectURL(bl);URLS.push(u);$q('.rimg',rbox).src=u;var a=$q('.png',rbox);a.href=u;a.download=fname('png');SHF=new File([bl],fname('png'),{type:'image/png'})},'image/png');
  try{var J=window.jspdf.jsPDF,land=c.width>c.height,doc=new J({orientation:land?'landscape':'portrait',unit:'pt',format:'letter'});var PW=doc.internal.pageSize.getWidth(),PH=doc.internal.pageSize.getHeight(),m=30,s=Math.min((PW-2*m)/c.width,(PH-2*m)/c.height);
-  doc.addImage(c.toDataURL('image/jpeg',0.92),'JPEG',(PW-c.width*s)/2,m,c.width*s,c.height*s);var pb=doc.output('blob'),pu=URL.createObjectURL(pb);URLS.push(pu);var ap=$q('.pdf',rbox);ap.href=pu;ap.download=fname('pdf')}catch(e){$q('.pdf',rbox).style.display='none'}}
-rbox.addEventListener('click',function(e){var b=e.target.closest('[data-a]');if(!b)return;var a=b.dataset.a;
+  doc.addImage(c.toDataURL('image/jpeg',0.92),'JPEG',(PW-c.width*s)/2,m,c.width*s,c.height*s);var pb=doc.output('blob'),pu=URL.createObjectURL(pb);SHP=new File([pb],fname('pdf'),{type:'application/pdf'});URLS.push(pu);var ap=$q('.pdf',rbox);ap.href=pu;ap.download=fname('pdf')}catch(e){$q('.pdf',rbox).style.display='none'}}
+rbox.addEventListener('click',function(e){var ln=e.target.closest('a.png,a.pdf');if(ln&&IOS&&navigator.share){var f=ln.classList.contains('pdf')?SHP:SHF;if(f&&(!navigator.canShare||navigator.canShare({files:[f]}))){e.preventDefault();navigator.share({files:[f]}).catch(function(){});return}}var b=e.target.closest('[data-a]');if(!b)return;var a=b.dataset.a;
  if(a==='close'){exitSnap();return}
  if(a==='again'){document.body.classList.remove('shotopen');return}
  if(a==='share'&&SHF){navigator.share({files:[SHF],title:'Old Iowa Houses Map'}).catch(function(){})}});
