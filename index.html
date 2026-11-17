@@ -109,7 +109,7 @@ let cur="none";M.createPane("lots");M.getPane("lots").style.zIndex=350;M.getPane
 let LQ=0;async function lotLoad(){if(!lotOn||M.getZoom()<16)return;const myq=++LQ;const b=M.getBounds();const q=new URLSearchParams({geometry:[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].join(","),geometryType:"esriGeometryEnvelope",inSR:4326,spatialRel:"esriSpatialRelIntersects",outFields:"OBJECTID",outSR:4326,geometryPrecision:6,returnGeometry:true,f:"json",resultRecordCount:2000});try{const j=await (await fetch(PU,{method:"POST",body:q})).json();if(myq!==LQ)return;const keep=M.getBounds().pad(0.5);LG.eachLayer(l=>{if(!keep.intersects(l.getBounds())){LG.removeLayer(l);delete SEEN[l._oid]}});for(const f of j.features||[]){const id=f.attributes.OBJECTID;if(SEEN[id])continue;SEEN[id]=1;const pg=L.polygon(f.geometry.rings.map(r=>r.map(p=>[p[1],p[0]])),{pane:"lots",color:"#00e5ff",weight:1.6,fill:false,interactive:false});pg._oid=id;pg.addTo(LG)}}catch(e){}}
 function LOT(on){lotOn=on;if(on){if(!M.hasLayer(LG))LG.addTo(M);lotLoad()}else M.removeLayer(LG)}M.on("moveend",lotLoad);const st=document.createElement("style");document.head.appendChild(st);
 function sty(){st.textContent=".sanb{filter:saturate(1.4)}";LOT(gc.checked)}
-function set(k){try{localStorage.setItem("OIH_ov",k)}catch(e){}if(LY[cur])M.removeLayer(LY[cur]);cur=k;if(LY[k])LY[k].addTo(M);P.style.mixBlendMode="normal";P.style.opacity=f.value/100;D.querySelectorAll(".bt button").forEach(b=>b.classList.toggle("on",b.dataset.k===k));D.querySelector(".om").classList.toggle("on",k!=="none");nt.textContent=NOTE[k];if(k==="s1901"){gc.checked=true;LOT(true);const SB2=L.latLngBounds(SHEETS.flatMap(s=>s.a||s.b));if(!M.getBounds().intersects(SB2)||M.getZoom()<14)M.setView(SB2.getCenter(),Math.max(15,M.getBoundsZoom(SB2)),{animate:false})}}
+function set(k){try{localStorage.setItem("OIH_ov",k)}catch(e){}if(LY[cur])M.removeLayer(LY[cur]);cur=k;if(LY[k])LY[k].addTo(M);P.style.mixBlendMode="normal";P.style.opacity=f.value/100;D.querySelectorAll(".bt button").forEach(b=>b.classList.toggle("on",b.dataset.k===k));D.querySelector(".om").classList.toggle("on",k!=="none");nt.textContent=NOTE[k];if(k==="s1901"){const SB2=L.latLngBounds(SHEETS.flatMap(s=>s.a||s.b));if(!M.getBounds().intersects(SB2)||M.getZoom()<14)M.setView(SB2.getCenter(),Math.max(15,M.getBoundsZoom(SB2)),{animate:false})}}
 window.OV={LY,set,get cur(){return cur},P,D,f,M,B:{hybrid,hybridS,street}};D.querySelector(".bt").onclick=e=>{const b=e.target.closest("button");if(b)set(b.dataset.k)};
 D.querySelector(".om").onclick=()=>D.classList.toggle("open");
 f.oninput=()=>{P.style.opacity=f.value/100};gc.onchange=sty;sty();try{const k0=localStorage.getItem("OIH_ov");if(k0&&k0!=="none"&&LY[k0])set(k0)}catch(e){};})();</script><script>(function(){var q=document.getElementById('q');var ol=null;var RX=/^(?:sheet|page|pg|p|s|#)\s*#?\s*(\d{1,3})$/i;
@@ -154,6 +154,9 @@ css.textContent=[
 '.omc .omx{display:none!important}',
 '.obar{display:none;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.3);padding:8px 10px;width:calc(100vw - 96px);max-width:470px;font:600 14px system-ui;color:#1c1c1c}',
 '.omc.act .obar{display:block}.omc.act .row{display:none}',
+'.omc.act.mini .obar{display:none}.opill{display:none;align-items:center;gap:6px;border:0;background:#fff;border-radius:18px;box-shadow:0 2px 8px rgba(0,0,0,.3);padding:9px 14px;font:600 14px system-ui;color:#1c1c1c}.omc.act.mini:not(.open) .opill{display:inline-flex}',
+'.omc.open .obar,.omc.open .opill{display:none!important}.omc .omdone{display:none}.omc.act.open .omdone{display:block;width:100%;margin-top:6px;border:0;background:#1f5fbf;color:#fff;border-radius:8px;padding:9px;font:600 14px system-ui}',
+'.obar .r2{justify-content:space-between}.obar .lt{display:flex;align-items:center;gap:5px;font:600 13px system-ui;color:#333;white-space:nowrap}.obar .lt input{width:18px;height:18px;margin:0}',
 '.obar .l{display:flex;align-items:center;gap:8px;margin:2px 0}',
 '.obar .nm{flex:0 0 auto;max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:1px solid #ccd;background:#f3f5f9;border-radius:8px;padding:8px 10px;font:600 14px system-ui;color:#1c1c1c}',
 '.obar input[type=range]{flex:1 1 auto;min-width:60px;height:30px}',
@@ -197,19 +200,20 @@ css.textContent=[
 document.head.appendChild(css);
 /* ---------------- overlay bar + second layer ---------------- */
 var bar=document.createElement('div');bar.className='obar';
-bar.innerHTML='<div class="l l1"><button class="nm n1" title="Change map"></button><input type="range" class="s1" min="0" max="100"><button class="x x1" title="Turn off">×</button></div>'+
+bar.innerHTML='<div class="l l1"><button class="nm n1" title="Change map"></button><input type="range" class="s1" min="0" max="100"><button class="x mn" title="Make smaller" aria-label="Make smaller"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button><button class="x x1" title="Turn off">×</button></div>'+
 '<div class="l l2" style="display:none"><button class="nm n2" title="Change map"></button><input type="range" class="s2" min="0" max="100" value="60"><button class="x x2" title="Remove">×</button></div>'+
-'<button class="add">+ Add another layer</button><div class="tip"></div><div class="pk"></div>';
+'<div class="l r2"><button class="add">+ Add another layer</button><label class="lt"><input type="checkbox" class="lt1"> Lot lines</label></div><div class="tip"></div><div class="pk"></div>';
 D.appendChild(bar);
+var pill=document.createElement('button');pill.className='opill';D.appendChild(pill);var GC=D.querySelector('.omg'),LT=null;var dn=document.createElement('button');dn.className='omdone';dn.textContent='Done';var pn=D.querySelector('.pn');if(pn)pn.appendChild(dn);dn.addEventListener('click',function(e){e.stopPropagation();D.classList.remove('open');sync()});pill.addEventListener('click',function(){D.classList.remove('mini');try{localStorage.removeItem('OIH_obmin')}catch(e){}sync()});try{if(localStorage.getItem('OIH_obmin'))D.classList.add('mini')}catch(e){}MP.on('click',function(){if(D.classList.contains('open')&&O.cur!=='none'){D.classList.remove('open');sync()}});
 L.DomEvent.disableClickPropagation(bar);L.DomEvent.disableScrollPropagation(bar);
-var s1=$q('.s1',bar),s2=$q('.s2',bar);
+var s1=$q('.s1',bar),s2=$q('.s2',bar);LT=$q('.lt1',bar);LT.addEventListener('change',function(){if(GC){GC.checked=LT.checked;GC.dispatchEvent(new Event('change'))}});
 function order(){P2.style.zIndex=(pr(k2)>=pr(O.cur))?(z1+1):(z1-1)}
 function removeSecond(){if(L2){MP.removeLayer(L2);L2.options.pane='old'}L2=null;k2='none';try{localStorage.removeItem('OIH_ov2')}catch(e){}}
 function addSecond(k){if(!LY[k]||k===O.cur)return;removeSecond();L2=LY[k];L2.options.pane='old2';L2.addTo(MP);k2=k;
  var both=GOOD.indexOf(k)<0&&GOOD.indexOf(O.cur)<0;s2.value=both?50:70;P2.style.opacity=s2.value/100;order();try{localStorage.setItem('OIH_ov2',k)}catch(e){}sync()}
 function sync(){var k=O.cur;if(k2!=='none'&&(k==='none'||k===k2))removeSecond();
  var act=k!=='none';D.classList.toggle('act',act);if(!act){bar.classList.remove('pick');return}
- $q('.n1',bar).textContent=NM[k]||k;s1.value=O.f.value;
+ $q('.n1',bar).textContent=NM[k]||k;s1.value=O.f.value;if(LT&&GC)LT.checked=GC.checked;pill.innerHTML=(NM[k]||k)+(k2!=='none'?' + '+(NM[k2]||k2):'')+' <span style="font-size:11px">\u25B4</span>';
  var has2=k2!=='none';$q('.l2',bar).style.display=has2?'flex':'none';$q('.add',bar).style.display=has2?'none':'block';
  if(has2){$q('.n2',bar).textContent=NM[k2]||k2;order()}
  var tip='';if(has2){var top=pr(k2)>=pr(k)?k2:k;tip=(NM[top]||top)+' is drawn on top. Slide either bar to fade it.';if(GOOD.indexOf(k)<0&&GOOD.indexOf(k2)<0)tip='Both are full photos/maps, so the top one covers the other. Use its slider to blend them.'}
@@ -219,6 +223,7 @@ function picker(){var k=O.cur,keys=Object.keys(NM).filter(function(x){return x!=
  var pk=$q('.pk',bar);pk.innerHTML='<small>Layers marked ★ are line drawings that show well on top of another map.</small>'+keys.map(function(x){var g=GOOD.indexOf(x)>=0;return '<button data-k="'+x+'" class="'+(g?'g':'')+'">'+(g?'★ ':'')+NM[x]+'</button>'}).join('');}
 bar.addEventListener('click',function(e){var t=e.target;
  if(t.closest('.n1')||t.closest('.n2')){bar.classList.remove('pick');D.classList.add('open');return}
+ if(t.closest('.mn')){D.classList.add('mini');try{localStorage.setItem('OIH_obmin','1')}catch(e){}return}
  if(t.closest('.x1')){var b=D.querySelector('.bt button[data-k="none"]');if(b)b.click();return}
  if(t.closest('.x2')){removeSecond();sync();return}
  if(t.closest('.add')){picker();bar.classList.toggle('pick');return}
