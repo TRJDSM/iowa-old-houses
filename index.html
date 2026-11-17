@@ -418,7 +418,7 @@ window.addEventListener('resize',function(){if(pan.style.display==='block')place
 var O=window.OV;if(!O||!O.M)return;var MP=O.M;
 var URL0='https://services.arcgis.com/HT7H9QGiZQoRJDpJ/arcgis/rest/services/Street_Centerlines_view/FeatureServer/0/query';
 MP.createPane('stl');var PN=MP.getPane('stl');PN.style.zIndex=590;PN.style.pointerEvents='none';
-var css=document.createElement('style');css.textContent='.stl{position:absolute;white-space:nowrap;font:700 12px system-ui,-apple-system,sans-serif;color:#fff;letter-spacing:.02em;text-shadow:0 0 2px #000,0 0 3px #000,0 0 4px rgba(0,0,0,.8);transform-origin:center center;pointer-events:none}.stl.big{font-size:13px}';document.head.appendChild(css);
+var css=document.createElement('style');css.textContent='.stl{position:absolute;white-space:nowrap;font:700 12px system-ui,-apple-system,sans-serif;color:#fff;letter-spacing:.02em;text-shadow:0 0 2px #000,0 0 3px #000,0 0 4px rgba(0,0,0,.8);transform-origin:center center;pointer-events:none}.stl.big{font-size:13px}.stl span{font-weight:600}';document.head.appendChild(css);
 var T=0.01,TILES={},FEATS={},LG=L.layerGroup().addTo(MP),on=true;
 try{if(localStorage.getItem('OIH_stl')==='0')on=false}catch(e){}
 function tk(x,y){return x+'_'+y}
@@ -427,6 +427,9 @@ function load(){var n=need();if(!n.length){draw();return}var left=n.length;n.for
  var p='where=1%3D1&geometry='+g+'&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=OBJECTID,FullName&returnGeometry=true&outSR=4326&geometryPrecision=6&f=geojson&resultRecordCount=2000';
  fetch(URL0+'?'+p).then(function(r){return r.json()}).then(function(j){(j.features||[]).forEach(function(f){var id=f.properties.OBJECTID||f.id;if(!FEATS[id]&&f.properties.FullName&&f.geometry)FEATS[id]=f});TILES[t[2]]=1}).catch(function(){TILES[t[2]]=0}).then(function(){if(--left===0)draw()})})}
 function nice(s){s=String(s).replace(/\s+/g,' ').trim();if(/^[A-Z0-9 .]+$/.test(s))s=s.toLowerCase().replace(/\b([a-z])/g,function(c){return c.toUpperCase()}).replace(/\b(Ne|Nw|Se|Sw)\b/g,function(x){return x.toUpperCase()});return s.replace(/^Martin Luther King Jr Pkwy$/,'MLK Pkwy').replace(/^W Martin Luther King Jr Pkwy$/,'W MLK Pkwy').replace(/^E Martin Luther King Jr Pkwy$/,'E MLK Pkwy')}
+var OLD01={'2nd Ave':'Bluff St','Maine St':'Main St','Clark St':'Clarkson St','Mondamin Ave':'May St','Polk Blvd':'Cleveland Ave','Hubbell Ave':'Garfield Ave','SE 3rd St':'S Garfield St','SE 4th St':'Jackson St','SW 1st St':'S Madison St','S Union St':'Monroe St','South Union St':'Monroe St','Jackson Ave':'S 5th St','Granger Ave':'S 6th St','Dunham Ave':'S 7th St','Edison Ave':'S 8th St','E University Ave':'E North St','Drake Park Ave':'Atkins St'};
+var OLD84={'Grand Ave':'Sycamore St','E Grand Ave':'E Sycamore St','E 1st St':'Front St'};
+function oldName(n){if(O.cur==='s1884'&&OLD84[n])return OLD84[n];return OLD01[n]||(O.cur==='s1884'?null:null)}
 function lines(f){var g=f.geometry;return g.type==='LineString'?[g.coordinates]:g.type==='MultiLineString'?g.coordinates:[]}
 function draw(){LG.clearLayers();if(!on||O.cur==='none')return;var z=MP.getZoom();if(z<15)return;
  var bb=MP.getBounds().pad(0.05),sz=MP.getSize(),boxes=[],minPx=z>=17?60:z>=16?40:22;
@@ -438,15 +441,15 @@ function draw(){LG.clearLayers();if(!on||O.cur==='none')return;var z=MP.getZoom(
    var a=pts[i2],b=pts[i2+1],t=segs[i2]?h/segs[i2]:0,mx=a.x+(b.x-a.x)*t,my=a.y+(b.y-a.y)*t;
    if(mx<-20||my<-20||mx>sz.x+20||my>sz.y+20)return;
    var ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;if(ang>90)ang-=180;if(ang<-90)ang+=180;
-   cand.push({n:nm,x:mx,y:my,a:ang,len:len})})}
+   cand.push({n:nm,o:oldName(nm),x:mx,y:my,a:ang,len:len})})}
  cand.sort(function(p,q){return q.len-p.len});
  var gap=z>=17?14:z>=16?16:10;
- cand.forEach(function(c){var w=c.n.length*7+8,hgt=16,r=Math.abs(c.a)*Math.PI/180,bw=Math.abs(w*Math.cos(r))+Math.abs(hgt*Math.sin(r)),bh=Math.abs(w*Math.sin(r))+Math.abs(hgt*Math.cos(r));
+ cand.forEach(function(c){var w=(c.n.length+(c.o?c.o.length+6:0))*7+8,hgt=16,r=Math.abs(c.a)*Math.PI/180,bw=Math.abs(w*Math.cos(r))+Math.abs(hgt*Math.sin(r)),bh=Math.abs(w*Math.sin(r))+Math.abs(hgt*Math.cos(r));
   var box=[c.x-bw/2-gap/2,c.y-bh/2-gap/2,c.x+bw/2+gap/2,c.y+bh/2+gap/2];
-  for(var i=0;i<boxes.length;i++){var q=boxes[i];if(box[0]<q[0][2]&&box[2]>q[0][0]&&box[1]<q[0][3]&&box[3]>q[0][1])return;if(q[1]===c.n&&Math.hypot(q[2]-c.x,q[3]-c.y)<(z>=17?110:z>=16?150:170))return}
+  for(var i=0;i<boxes.length;i++){var q=boxes[i];if(box[0]<q[0][2]&&box[2]>q[0][0]&&box[1]<q[0][3]&&box[3]>q[0][1])return;if(q[1]===c.n&&!c.o&&Math.hypot(q[2]-c.x,q[3]-c.y)<(z>=17?110:z>=16?150:170))return}
   boxes.push([box,c.n,c.x,c.y]);
   var ll=MP.containerPointToLatLng([c.x,c.y]);
-  LG.addLayer(L.marker(ll,{pane:'stl',interactive:false,keyboard:false,icon:L.divIcon({className:'',iconSize:[0,0],html:'<span class="stl'+(z>=18?' big':'')+'" style="transform:translate(-50%,-50%) rotate('+c.a.toFixed(1)+'deg)">'+c.n.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</span>'})}))})}
+  LG.addLayer(L.marker(ll,{pane:'stl',interactive:false,keyboard:false,icon:L.divIcon({className:'',iconSize:[0,0],html:'<span class="stl'+(z>=18?' big':'')+'" style="transform:translate(-50%,-50%) rotate('+c.a.toFixed(1)+'deg)">'+c.n.replace(/&/g,'&amp;').replace(/</g,'&lt;')+(c.o?' <span style="color:#ffe58a">(was '+c.o+')</span>':'')+'</span>'})}))})}
 var tm=null;function go(){clearTimeout(tm);tm=setTimeout(function(){if(!on||O.cur==='none'||MP.getZoom()<15){LG.clearLayers();return}load()},150)}
 MP.on('moveend zoomend',go);
 var D=O.D;if(D){D.addEventListener('click',function(){setTimeout(go,50)});var oms=D.querySelector('.oms');if(oms)oms.addEventListener('change',function(){setTimeout(go,50)})}
