@@ -1,0 +1,1 @@
+Default photo is now the newest sharp Iowa 2023-25 leaf-off; add 2025 summer option

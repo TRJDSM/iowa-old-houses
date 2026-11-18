@@ -57,7 +57,7 @@ const lab2=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Ref
 const street=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:20,maxNativeZoom:19,attribution:"&copy; OpenStreetMap contributors"});
 const hybrid=L.layerGroup([sat,lab,lab2]);
 const M=L.map("map",{zoomControl:true,layers:[hybrid]}).setView([41.66,-93.62],12);try{const v=JSON.parse(localStorage.getItem("OIH_view")||"null");if(v&&v.z)M.setView([v.la,v.lo],v.z,{animate:false})}catch(e){}M.on("moveend",()=>{try{const c=M.getCenter();localStorage.setItem("OIH_view",JSON.stringify({la:c.lat,lo:c.lng,z:M.getZoom()}))}catch(e){}});
-const hybridS=L.layerGroup([sum,lab,lab2]);L.control.layers({"Leaf-off photo (2023–25)":hybrid,"Summer photo":hybridS,"Street map":street},null,{position:"bottomleft"}).addTo(M);
+const hybridS=L.layerGroup([sum,lab,lab2]);const hybridN=L.layerGroup([ISL("naip_2025_nc",{maxNativeZoom:18}),lab,lab2]);const hybridM=L.layerGroup([ISL("naip_2023_nc",{maxNativeZoom:19}),lab,lab2]);L.control.layers({"Leaf-off photo (2023–25)":hybrid,"Summer photo":hybridS,"Street map":street},null,{position:"bottomleft"}).addTo(M);
 const CL=L.markerClusterGroup({disableClusteringAtZoom:17,maxClusterRadius:z=>z>=15?16:40,spiderfyOnMaxZoom:true,showCoverageOnHover:false,chunkedLoading:true});M.addLayer(CL);
 let on=new Set(DEC.map(d=>d[0]));
 $=id=>document.getElementById(id);
@@ -110,7 +110,7 @@ let LQ=0;async function lotLoad(){if(!lotOn||M.getZoom()<16)return;const myq=++L
 function LOT(on){lotOn=on;if(on){if(!M.hasLayer(LG))LG.addTo(M);lotLoad()}else M.removeLayer(LG)}M.on("moveend",lotLoad);const st=document.createElement("style");document.head.appendChild(st);
 function sty(){st.textContent=".sanb{filter:saturate(1.4)}";LOT(gc.checked)}
 function set(k){try{localStorage.setItem("OIH_ov",k)}catch(e){}if(LY[cur])M.removeLayer(LY[cur]);cur=k;if(LY[k])LY[k].addTo(M);P.style.mixBlendMode="normal";P.style.opacity=f.value/100;D.querySelectorAll(".bt button").forEach(b=>b.classList.toggle("on",b.dataset.k===k));D.querySelector(".om").classList.toggle("on",k!=="none");nt.textContent=NOTE[k];if(k==="s1901"){const SB2=L.latLngBounds(SHEETS.flatMap(s=>s.a||s.b));if(!M.getBounds().intersects(SB2)||M.getZoom()<14)M.setView(SB2.getCenter(),Math.max(15,M.getBoundsZoom(SB2)),{animate:false})}}
-window.OV={LY,set,get cur(){return cur},P,D,f,M,B:{hybrid,hybridS,street}};D.querySelector(".bt").onclick=e=>{const b=e.target.closest("button");if(b)set(b.dataset.k)};
+window.OV={LY,set,get cur(){return cur},P,D,f,M,B:{hybrid,hybridS,hybridN,hybridM,street}};D.querySelector(".bt").onclick=e=>{const b=e.target.closest("button");if(b)set(b.dataset.k)};
 D.querySelector(".om").onclick=()=>D.classList.toggle("open");
 f.oninput=()=>{P.style.opacity=f.value/100};gc.onchange=sty;sty();try{const k0=localStorage.getItem("OIH_ov");if(k0&&k0!=="none"&&LY[k0])set(k0)}catch(e){};})();</script><script>(function(){var q=document.getElementById('q');var ol=null;var RX=/^(?:sheet|page|pg|p|s|#)\s*#?\s*(\d{1,3})$/i;
 function sn(e){return +e.id.slice(-4)}
@@ -237,15 +237,15 @@ var oms=D.querySelector('.oms');if(oms)oms.addEventListener('change',after);
 setTimeout(function(){sync();try{var k=localStorage.getItem('OIH_ov2');if(k&&O.cur!=='none')addSecond(k)}catch(e){}if(O.cur!=='none')D.classList.remove('open')},600);
 /* ---------------- background maps ---------------- */
 var BASES=[
- {id:'sum',n:'Photo – summer',s:'Older Esri archive photo (date varies, not the newest), sharpest, green trees (default)',l:BB.hybridS},
- {id:'leaf',n:'Photo – leaf-off',s:'Iowa 2023–25, no leaves, see under trees',l:BB.hybrid},
+ {id:'sum',n:'Photo – summer',s:'Older Esri archive photo (date varies, looks like ~2017), green trees',l:BB.hybridS},
+ {id:'n25',n:'Photo – summer 2025',s:'Iowa NAIP, Sept 2025, green trees but blurrier and darker',l:BB.hybridN}, {id:'leaf',n:'Photo – leaf-off',s:'Newest sharp photo: Iowa 2023–25, bare trees so you can see the ground (default)',l:BB.hybrid},
  {id:'new',n:'Photo – newest',s:'April 2026, blurrier and buildings lean',l:L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:19,attribution:'Imagery © Esri, Vantor'})},
  {id:'street',n:'Street map',s:'OpenStreetMap',l:BB.street},
  {id:'topo',n:'Topographic',s:'Esri world topo',l:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:19,attribution:'Esri'})},
  {id:'blank',n:'No background',s:'Old map only',l:L.layerGroup()}
 ];
 function curBase(){for(var i=0;i<BASES.length;i++)if(BASES[i].l&&MP.hasLayer(BASES[i].l))return BASES[i].id;return ''}
-function setBase(id){BASES.forEach(function(b){if(b.l&&MP.hasLayer(b.l))MP.removeLayer(b.l)});var b=BASES.filter(function(x){return x.id===id})[0];if(b&&b.l){b.l.addTo(MP);if(b.l.bringToBack)b.l.bringToBack()}try{localStorage.setItem('OIH_base2',id)}catch(e){}drawB()}
+function setBase(id){BASES.forEach(function(b){if(b.l&&MP.hasLayer(b.l))MP.removeLayer(b.l)});var b=BASES.filter(function(x){return x.id===id})[0];if(b&&b.l){b.l.addTo(MP);if(b.l.bringToBack)b.l.bringToBack()}try{localStorage.setItem('OIH_base3',id)}catch(e){}drawB()}
 var tbx=document.createElement('div');tbx.className='tbx';
 tbx.innerHTML='<button class="tb-b" title="Background map" aria-label="Background map"><svg viewBox="0 0 24 24"><path d="M12 3 2 8l10 5 10-5-10-5z"/><path d="m2 13 10 5 10-5"/><path d="m2 17.5 10 5 10-5"/></svg></button>'+
 '<button class="tb-s" title="Take a picture of the map" aria-label="Take a picture of the map"><svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="4"/></svg></button>';
@@ -258,7 +258,7 @@ $q('.tb-b',tbx).onclick=function(){drawB();bp.classList.toggle('on')};
 bp.onclick=function(e){var b=e.target.closest('button[data-b]');if(b){setBase(b.dataset.b);bp.classList.remove('on')}};
 MP.on('click',function(){bp.classList.remove('on')});
 var lc=document.querySelector('.leaflet-control-layers');if(lc)lc.style.display='none';
-try{var b0=localStorage.getItem('OIH_base2')||'sum';if(!BASES.some(function(b){return b.id===b0}))b0='sum';if(b0!==curBase())setBase(b0)}catch(e){}
+try{var b0=localStorage.getItem('OIH_base3')||'leaf';if(!BASES.some(function(b){return b.id===b0}))b0='leaf';if(b0!==curBase())setBase(b0)}catch(e){}
 /* ---------------- map picture: select area, preview, save / share ---------------- */
 var sb=document.createElement('div');sb.className='snapbar';
 sb.innerHTML='<span class="t">Move the map, then</span><button class="p" data-a="sel">Select area</button><button data-a="all">Whole screen</button><button class="x" data-a="x" aria-label="Cancel">✕</button>';
