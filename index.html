@@ -462,7 +462,9 @@ setTimeout(go,900);
 var O=window.OV;if(!O||!O.M)return;var MP=O.M;
 var KEY='OIH_mypins',SHOW='OIH_mypins_on';
 function load(){try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){return []}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(PINS))}catch(e){alert('Could not save pins on this device')}}
+function jget(k,d){try{return JSON.parse(localStorage.getItem(k)||d)}catch(e){return JSON.parse(d)}}
+var SYNC=localStorage.getItem('OIH_pinsync')||'',DIRTY=jget('OIH_mypins_dirty','{}'),DEL=jget('OIH_mypins_del','[]'),SST='';
+function save(p){if(p){(Array.isArray(p)?p:[p]).forEach(function(q){DIRTY[q.id]=1})}try{localStorage.setItem(KEY,JSON.stringify(PINS));localStorage.setItem('OIH_mypins_dirty',JSON.stringify(DIRTY));localStorage.setItem('OIH_mypins_del',JSON.stringify(DEL))}catch(e){alert('Could not save pins on this device')}if(p)later()}
 var PINS=load(),on=true;try{on=localStorage.getItem(SHOW)!=='0'}catch(e){}
 function esc(s){return String(s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 var COL={u:'#1e9e3a',d:'#d62020',s:'#7a4fd1'},LBL={u:'Undug',d:'Dug'};
@@ -481,7 +483,7 @@ var css=document.createElement('style');css.textContent=[
 '#mpl .ls{overflow:auto;border-top:1px solid #eee;flex:1}#mpl .it{display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-bottom:1px solid #f0f0f0;cursor:pointer}#mpl .it:hover{background:#f4f7fd}',
 '#mpl .dot{width:12px;height:12px;border-radius:6px;margin-top:4px;flex:0 0 auto}#mpl .it small{display:block;color:#777;font-size:12px}',
 '#mpl .ft{display:flex;flex-wrap:wrap;gap:6px;padding:10px 14px;border-top:1px solid #eee}#mpl .ft button{border:1px solid #1f5fbf;background:#fff;color:#1f5fbf;border-radius:8px;padding:8px 10px;font:600 13px system-ui}',
-'#mpl .em{padding:18px 14px;color:#666}#mpl .tip{padding:0 14px 8px;color:#666;font-size:12px}',
+'#mpl .sy{padding:8px 14px;border-top:1px solid #eee;font-size:13px;color:#444}#mpl .sy b.ok{color:#14702a}#mpl .sy b.no{color:#b06000}#mpl .sy button{margin-left:6px;border:1px solid #1f5fbf;background:#fff;color:#1f5fbf;border-radius:8px;padding:5px 9px;font:600 12px system-ui}#mpl .em{padding:18px 14px;color:#666}#mpl .tip{padding:0 14px 8px;color:#666;font-size:12px}',
 '.mpbanner{position:fixed;z-index:2400;left:50%;transform:translateX(-50%);top:110px;background:#7a4fd1;color:#fff;border-radius:12px;padding:10px 12px;font:600 14px system-ui;box-shadow:0 3px 12px rgba(0,0,0,.3);display:flex;gap:8px;align-items:center;max-width:92vw}.mpbanner button{border:0;border-radius:8px;padding:7px 10px;font:600 13px system-ui;background:#fff;color:#4b2a99}'
 ].join('');document.head.appendChild(css);
 function svg(c){return '<svg width="26" height="36" viewBox="0 0 26 36"><path d="M13 1C6.4 1 1 6.3 1 12.9 1 22 13 35 13 35S25 22 25 12.9C25 6.3 19.6 1 13 1z" fill="'+c+'" stroke="#fff" stroke-width="2"/><circle cx="13" cy="13" r="4.5" fill="#fff"/></svg>'}
@@ -495,14 +497,14 @@ function popHtml(p){return '<div class="mpop" data-id="'+p.id+'"><div class="h">
  '<textarea placeholder="Notes (where in the yard, owner, depth, finds...)">'+esc(p.n)+'</textarea>'+
  '<div class="row">'+links(p.la.toFixed(6),p.lo.toFixed(6))+'</div><div class="row"><button class="shr">Share this pin</button><button class="del">Delete</button></div><div class="c" style="margin:8px 0 0">Drag the pin to move it. Pins are saved only on this device.</div></div>'}
 function draw(){LG.clearLayers();MK={};PINS.forEach(function(p){var m=L.marker([p.la,p.lo],{icon:icon(p.s),draggable:true,pane:'mypins',zIndexOffset:3000,autoPan:true});m.bindPopup(function(){return popHtml(p)},{maxWidth:280,minWidth:220,autoPanPaddingTopLeft:[20,140],autoPanPaddingBottomRight:[20,40]});
- m.on('dragend',function(){var ll=m.getLatLng();p.la=ll.lat;p.lo=ll.lng;p.m=Date.now();save()});m.addTo(LG);MK[p.id]=m});cnt()}
+ m.on('dragend',function(){var ll=m.getLatLng();p.la=ll.lat;p.lo=ll.lng;p.a=nearAddr(p.la,p.lo)||p.a;p.m=Date.now();save(p)});m.addTo(LG);MK[p.id]=m});cnt()}
 function find(id){for(var i=0;i<PINS.length;i++)if(PINS[i].id===id)return PINS[i]}
 document.addEventListener('click',function(e){var pop=e.target.closest('.mpop');if(!pop||!pop.dataset.id)return;var p=find(pop.dataset.id);if(!p)return;
  var b=e.target.closest('button');if(!b)return;
- if(b.dataset.s){p.s=b.dataset.s;p.m=Date.now();save();MK[p.id].setIcon(icon(p.s));pop.querySelectorAll('.seg button').forEach(function(x){x.classList.toggle('on',x.dataset.s===p.s)});cnt();return}
- if(b.classList.contains('del')){if(!confirm('Delete this pin?'))return;PINS=PINS.filter(function(x){return x!==p});save();draw();MP.closePopup();return}
+ if(b.dataset.s){p.s=b.dataset.s;p.m=Date.now();save(p);MK[p.id].setIcon(icon(p.s));pop.querySelectorAll('.seg button').forEach(function(x){x.classList.toggle('on',x.dataset.s===p.s)});cnt();return}
+ if(b.classList.contains('del')){if(!confirm('Delete this pin?'))return;PINS=PINS.filter(function(x){return x!==p});delete DIRTY[p.id];DEL.push({id:p.id,m:Date.now()});save([]);draw();MP.closePopup();return}
  if(b.classList.contains('shr')){shareLink([p],'Pin: '+(p.a||'location'))}});
-document.addEventListener('input',function(e){var ta=e.target;if(ta.tagName!=='TEXTAREA')return;var pop=ta.closest('.mpop');if(!pop||!pop.dataset.id)return;var p=find(pop.dataset.id);if(!p)return;p.n=ta.value;p.m=Date.now();save()});
+document.addEventListener('input',function(e){var ta=e.target;if(ta.tagName!=='TEXTAREA')return;var pop=ta.closest('.mpop');if(!pop||!pop.dataset.id)return;var p=find(pop.dataset.id);if(!p)return;p.n=ta.value;p.m=Date.now();save(p)});
 /* drop a pin: long-press on phone / right-click on computer */
 var tmp=null;
 MP.on('contextmenu',function(e){var la=e.latlng.lat,lo=e.latlng.lng,a=nearAddr(la,lo);if(tmp)MP.removeLayer(tmp);
@@ -512,14 +514,14 @@ MP.on('contextmenu',function(e){var la=e.latlng.lat,lo=e.latlng.lng,a=nearAddr(l
  tmp._d={la:la,lo:lo,a:a}});
 document.addEventListener('click',function(e){var b=e.target.closest('.newp,.cxl');if(!b||!tmp)return;
  if(b.classList.contains('cxl')){MP.closePopup();return}
- var d=tmp._d;tmp._kept=true;MP.removeLayer(tmp);tmp=null;var p={id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),la:d.la,lo:d.lo,s:b.dataset.s,n:'',a:d.a,t:Date.now()};PINS.push(p);save();if(!on){on=true;LG.addTo(MP)}draw();setTimeout(function(){MK[p.id].openPopup();var ta=document.querySelector('.mpop[data-id="'+p.id+'"] textarea');if(ta)ta.focus()},50)});
+ var d=tmp._d;tmp._kept=true;MP.removeLayer(tmp);tmp=null;var p={id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),la:d.la,lo:d.lo,s:b.dataset.s,n:'',a:d.a,t:Date.now()};PINS.push(p);save(p);if(!on){on=true;LG.addTo(MP)}draw();setTimeout(function(){MK[p.id].openPopup();var ta=document.querySelector('.mpop[data-id="'+p.id+'"] textarea');if(ta)ta.focus()},50)});
 /* list panel */
-var P=document.createElement('div');P.id='mpl';P.innerHTML='<div class="hd"><span>My pins</span><button class="cl" aria-label="Close">\u2715</button></div><div class="tip">Hold your finger on the map (right-click on a computer) to drop a pin. Only you can see them.</div><div class="fl"><button data-f="all" class="on">All</button><button data-f="u">Undug</button><button data-f="d">Dug</button></div><div class="ls"></div><div class="ft"><button class="tg"></button><button class="sha">Share pins</button><button class="exk">Save for Google Earth</button><button class="bak">Backup file</button><button class="imp">Load file</button></div>';document.body.appendChild(P);
+var P=document.createElement('div');P.id='mpl';P.innerHTML='<div class="hd"><span>My pins</span><button class="cl" aria-label="Close">\u2715</button></div><div class="tip">Hold your finger on the map (right-click on a computer) to drop a pin. Only you can see them.</div><div class="fl"><button data-f="all" class="on">All</button><button data-f="u">Undug</button><button data-f="d">Dug</button></div><div class="ls"></div><div class="sy"></div><div class="ft"><button class="tg"></button><button class="sha">Share pins</button><button class="exk">Save for Google Earth</button><button class="bak">Backup file</button><button class="imp">Load file</button></div>';document.body.appendChild(P);
 L.DomEvent.disableClickPropagation(P);L.DomEvent.disableScrollPropagation(P);
 var FL='all';
 function list(){var ls=P.querySelector('.ls');var arr=PINS.filter(function(p){return FL==='all'||p.s===FL}).slice().sort(function(a,b){return (b.m||b.t)-(a.m||a.t)});
  ls.innerHTML=arr.length?arr.map(function(p){return '<div class="it" data-id="'+p.id+'"><span class="dot" style="background:'+COL[p.s]+'"></span><div>'+esc(p.a||(p.la.toFixed(5)+', '+p.lo.toFixed(5)))+'<small>'+LBL[p.s]+' · '+dstr(p.t)+(p.n?' · '+esc(p.n.slice(0,70)):'')+'</small></div></div>'}).join(''):'<div class="em">No pins yet.</div>';
- P.querySelector('.tg').textContent=on?'Hide my pins':'Show my pins'}
+ P.querySelector('.tg').textContent=on?'Hide my pins':'Show my pins';sy()}
 P.addEventListener('click',function(e){var t=e.target;
  if(t.closest('.cl')){P.classList.remove('on');return}
  var f=t.closest('[data-f]');if(f){FL=f.dataset.f;P.querySelectorAll('[data-f]').forEach(function(x){x.classList.toggle('on',x===f)});list();return}
@@ -528,7 +530,33 @@ P.addEventListener('click',function(e){var t=e.target;
  if(t.closest('.sha')){var arr=PINS.filter(function(p){return FL==='all'||p.s===FL});if(!arr.length)return;shareLink(arr,arr.length+' pins');return}
  if(t.closest('.exk')){fileOut(kml(PINS),'my-pins.kml','application/vnd.google-earth.kml+xml');return}
  if(t.closest('.bak')){fileOut(JSON.stringify({oihpins:1,pins:PINS}),'my-pins-backup.json','application/json');return}
- if(t.closest('.imp')){pick();return}});
+ if(t.closest('.imp')){pick();return}
+ if(t.closest('.con')){connect();return}
+ if(t.closest('.dis')){if(!confirm('Stop auto-saving on this device? Your pins stay on this device and in your Google Sheet.'))return;SYNC='';localStorage.removeItem('OIH_pinsync');SST='';sy();return}
+ if(t.closest('.syn')){sync();return}});
+function sy(){var el=P.querySelector('.sy');if(!el)return;var w=Object.keys(DIRTY).length+DEL.length;
+ if(!SYNC){el.innerHTML='<b class="no">Pins are only on this device.</b><button class="con">Connect Google Sheet</button>';return}
+ el.innerHTML=(SST==='busy'?'Saving…':SST==='err'||w?'<b class="no">'+(w?w+' change'+(w>1?'s':'')+' waiting to save':'Could not reach your Google Sheet')+' (no internet?)</b><button class="syn">Try now</button>':'<b class="ok">✓ Auto-saved to your Google Sheet</b>')+'<button class="dis">Disconnect</button>'}
+/* auto-save to the user's own Google Sheet (Apps Script web app). The address is pasted once per device and never put in the map's code or share links. */
+var tmr=null;function later(){if(!SYNC)return;clearTimeout(tmr);tmr=setTimeout(sync,1200)}
+function clean(p){return {id:p.id,la:p.la,lo:p.lo,s:p.s,n:p.n||'',a:p.a||'',t:p.t,m:p.m||p.t}}
+var busy=false;
+function sync(){if(!SYNC||busy)return Promise.resolve();busy=true;SST='busy';sy();
+ var ids=Object.keys(DIRTY),dels=DEL.slice();var send=PINS.filter(function(p){return DIRTY[p.id]}).map(clean).concat(dels.map(function(d){return {id:d.id,x:1,m:d.m}}));
+ var snap={};PINS.forEach(function(p){if(DIRTY[p.id])snap[p.id]=p.m||p.t});
+ var go=send.length?fetch(SYNC,{method:'POST',body:JSON.stringify({pins:send}),headers:{'Content-Type':'text/plain;charset=utf-8'}}).then(function(r){return r.json()}).then(function(j){if(!j.ok)throw 0;
+   ids.forEach(function(id){var p=find(id);if(!p||(p.m||p.t)===snap[id])delete DIRTY[id]});DEL=DEL.filter(function(d){return dels.indexOf(d)<0});save()}):Promise.resolve();
+ return go.then(function(){return fetch(SYNC+(SYNC.indexOf('?')<0?'?':'&')+'r='+Date.now()).then(function(r){return r.json()})}).then(function(rows){if(!Array.isArray(rows))throw 0;
+   var srv={};rows.forEach(function(r){srv[r.id]=r});var gone={};DEL.forEach(function(d){gone[d.id]=1});
+   PINS=PINS.filter(function(p){return DIRTY[p.id]||(srv[p.id]&&!srv[p.id].x)});
+   rows.forEach(function(r){if(r.x||gone[r.id]||!isFinite(r.la)||!isFinite(r.lo))return;var p=find(r.id);if(p&&DIRTY[p.id])return;var q={id:r.id,la:+r.la,lo:+r.lo,s:r.s==='d'?'d':'u',n:r.n||'',a:r.a||'',t:+r.t||Date.now(),m:+r.m||undefined};if(p){var i=PINS.indexOf(p);PINS[i]=q}else PINS.push(q)});
+   save();SST='';busy=false;var op=MP._popup&&MP._popup._source&&MP._popup._source.options.pane==='mypins';if(!op)draw();else cnt();if(P.classList.contains('on'))list();else sy();if(Object.keys(DIRTY).length||DEL.length)later()})
+ .catch(function(){SST='err';busy=false;sy()})}
+function connect(){var u=prompt('Paste the web app address from your Google Sheet (it starts with https://script.google.com/):');if(!u)return;u=u.trim();
+ if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(u)){alert('That does not look like the right address. It should start with https://script.google.com/');return}
+ fetch(u+(u.indexOf('?')<0?'?':'&')+'r='+Date.now()).then(function(r){return r.json()}).then(function(rows){if(!Array.isArray(rows))throw 0;SYNC=u;localStorage.setItem('OIH_pinsync',u);save(PINS.slice());sync().then(function(){alert('Connected. Your pins now save to your Google Sheet automatically.')})})
+ .catch(function(){alert('Could not connect. Check the address, and that the web app is set to “Anyone”.')})}
+addEventListener('online',function(){sync()});document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')sync()});
 function cnt(){var b=document.querySelector('#mnd button[data-a="mypins"]');if(b)b.textContent='My pins ('+PINS.length+')'}
 function openList(){list();P.classList.add('on')}
 /* add to the hamburger menu */
@@ -540,7 +568,7 @@ function x(s){return String(s||'').replace(/[&<>]/g,function(c){return {'&':'&am
 function kml(arr){return '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>My pins</name><Style id="u"><IconStyle><color>ff3a9e1e</color><Icon><href>http://maps.google.com/mapfiles/kml/paddle/grn-blank.png</href></Icon></IconStyle></Style><Style id="d"><IconStyle><color>ff2020d6</color><Icon><href>http://maps.google.com/mapfiles/kml/paddle/red-blank.png</href></Icon></IconStyle></Style>'+
  arr.map(function(p){return '<Placemark><name>'+x((LBL[p.s]||'')+(p.a?' - '+p.a:''))+'</name><description>'+x((p.n||'')+' (added '+dstr(p.t)+')')+'</description><styleUrl>#'+p.s+'</styleUrl><Point><coordinates>'+p.lo.toFixed(7)+','+p.la.toFixed(7)+',0</coordinates></Point></Placemark>'}).join('')+'</Document></kml>'}
 function pick(){var i=document.createElement('input');i.type='file';i.accept='.json,.kml,application/json';i.onchange=function(){var f=i.files[0];if(!f)return;var r=new FileReader();r.onload=function(){var add=[];try{var j=JSON.parse(r.result);add=j.pins||j}catch(e){var doc=new DOMParser().parseFromString(r.result,'text/xml');doc.querySelectorAll('Placemark').forEach(function(pm){var c=(pm.querySelector('coordinates')||{}).textContent;if(!c)return;var q=c.trim().split(',');var nm=(pm.querySelector('name')||{}).textContent||'';add.push({la:+q[1],lo:+q[0],s:/^Dug/.test(nm)?'d':'u',a:nm.replace(/^(Dug|Undug) - ?/,''),n:((pm.querySelector('description')||{}).textContent||'').replace(/ \(added [^)]*\)$/,''),t:Date.now()})})}merge(add,'Loaded')};r.readAsText(f)};i.click()}
-function merge(add,verb){var n=0;add.forEach(function(p){if(!(p&&isFinite(p.la)&&isFinite(p.lo)))return;var dup=PINS.some(function(q){return Math.abs(q.la-p.la)<1e-6&&Math.abs(q.lo-p.lo)<1e-6});if(dup)return;PINS.push({id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),la:+p.la,lo:+p.lo,s:p.s==='d'?'d':'u',n:p.n||'',a:p.a||'',t:p.t||Date.now()});n++});save();if(!on){on=true;LG.addTo(MP)}draw();list();alert(verb+' '+n+' pin'+(n===1?'':'s')+'.')}
+function merge(add,verb){var n=0;add.forEach(function(p){if(!(p&&isFinite(p.la)&&isFinite(p.lo)))return;var dup=PINS.some(function(q){return Math.abs(q.la-p.la)<1e-6&&Math.abs(q.lo-p.lo)<1e-6});if(dup)return;PINS.push({id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),la:+p.la,lo:+p.lo,s:p.s==='d'?'d':'u',n:p.n||'',a:p.a||'',t:p.t||Date.now()});n++});save(PINS.slice(-n));if(!on){on=true;LG.addTo(MP)}draw();list();alert(verb+' '+n+' pin'+(n===1?'':'s')+'.')}
 /* share as a link: pins ride in the part of the link after #, which is never sent to any server */
 function enc(arr){var s=JSON.stringify(arr.map(function(p){return [+p.la.toFixed(6),+p.lo.toFixed(6),p.s,p.n||'',p.a||'']}));return btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
 function dec(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';return JSON.parse(decodeURIComponent(escape(atob(s)))).map(function(a){return {la:a[0],lo:a[1],s:a[2],n:a[3],a:a[4]}})}
@@ -552,7 +580,7 @@ function shareLink(arr,title){var u=location.origin+location.pathname.replace(/w
  var bn=document.createElement('div');bn.className='mpbanner';bn.innerHTML='<span>'+arr.length+' shared pin'+(arr.length>1?'s':'')+' (purple)</span><button class="sv">Save to my pins</button><button class="hd">Hide</button>';document.body.appendChild(bn);
  bn.querySelector('.sv').onclick=function(){merge(arr,'Saved');MP.removeLayer(SL);bn.remove();history.replaceState(null,'',location.pathname)};
  bn.querySelector('.hd').onclick=function(){MP.removeLayer(SL);bn.remove();history.replaceState(null,'',location.pathname)}})();
-draw();
+draw();sync();
 })();
 </script></body>
 <script>(function(){let dp=null;M.on("contextmenu_old",e=>{const la=e.latlng.lat.toFixed(6),lo=e.latlng.lng.toFixed(6);if(dp)M.removeLayer(dp);dp=L.marker(e.latlng).addTo(M);dp.bindPopup('<div style="font:13px system-ui;min-width:170px"><b>Dropped pin</b><div style="color:#666;font-size:11px;margin:2px 0 8px">'+la+', '+lo+'</div><div style="display:flex;flex-direction:column;gap:6px"><a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+la+','+lo+'" target="_blank" rel="noopener">Street View here</a><a href="https://earth.google.com/web/@'+la+','+lo+',300a,250d,35y,0h,45t,0r" target="_blank" rel="noopener">Google Earth (3D)</a><a href="https://www.google.com/maps/search/?api=1&query='+la+','+lo+'" target="_blank" rel="noopener">Google Maps</a><a href="#" onclick="return false" class="dprm">Remove pin</a></div></div>').openPopup();dp.on("popupopen",()=>{const r=document.querySelector(".dprm");if(r)r.onclick=()=>{M.removeLayer(dp);dp=null;return false}});const r=document.querySelector(".dprm");if(r)r.onclick=()=>{M.removeLayer(dp);dp=null;return false}})})();</script><style>#cty,#typ,#cnt{display:none!important}#mnu{flex:0 0 auto;width:44px;border:0;border-radius:10px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.3);font:600 20px system-ui;color:#111;cursor:pointer}#mnd{position:absolute;right:0;top:52px;z-index:1001;background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.35);padding:6px;display:none;min-width:170px}#mnd.open{display:block}#mnd button{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 12px;font:600 14px system-ui;color:#111;border-radius:6px;cursor:pointer}#mnd button:hover{background:#f1f1f1}#bar .row{position:relative}</style>
