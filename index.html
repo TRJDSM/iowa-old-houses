@@ -466,12 +466,12 @@ function msg(t){var d=document.createElement('div');d.className='mptoast';d.text
 function jget(k,d){try{return JSON.parse(localStorage.getItem(k)||d)}catch(e){return JSON.parse(d)}}
 var SYNC=localStorage.getItem('OIH_pinsync')||'',DIRTY=jget('OIH_mypins_dirty','{}'),DEL=jget('OIH_mypins_del','[]'),SST='';
 function save(p){if(p){(Array.isArray(p)?p:[p]).forEach(function(q){DIRTY[q.id]=1})}try{localStorage.setItem(KEY,JSON.stringify(PINS));localStorage.setItem('OIH_mypins_dirty',JSON.stringify(DIRTY));localStorage.setItem('OIH_mypins_del',JSON.stringify(DEL))}catch(e){msg('Could not save pins on this device')}if(p)later()}
-var PINS=load(),on=true;try{on=localStorage.getItem(SHOW)!=='0'}catch(e){}
+var PINS=load(),on=false;
 function esc(s){return String(s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 var COL={u:'#1e9e3a',d:'#d62020',s:'#7a4fd1'},LBL={u:'Undug',d:'Dug'};
 MP.createPane('mypins');MP.getPane('mypins').style.zIndex=660;
 var css=document.createElement('style');css.textContent=[
-'.mpin{width:26px;height:36px;transform:translate(-13px,-34px)}.mpin svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}',
+'.mpin svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))}',
 '.mpop{font:14px system-ui;min-width:200px;color:#1c1c1c}.mpop .h{font-weight:700;font-size:15px;margin-bottom:2px}.mpop .c{color:#666;font-size:11px;margin-bottom:8px}',
 '.mpop .seg{display:flex;gap:6px;margin:6px 0}.mpop .seg button{flex:1;border:2px solid #ccd;background:#fff;border-radius:8px;padding:8px 6px;font:600 13px system-ui;color:#333}',
 '.mpop .seg button.on.u{border-color:#1e9e3a;background:#e6f6ea;color:#14702a}.mpop .seg button.on.d{border-color:#d62020;background:#fde8e8;color:#a31616}',
@@ -487,8 +487,9 @@ var css=document.createElement('style');css.textContent=[
 '#mpl .sy{padding:8px 14px;border-top:1px solid #eee;font-size:13px;color:#444}#mpl .sy b.ok{color:#14702a}#mpl .sy b.no{color:#b06000}#mpl .sy button{margin-left:6px;border:1px solid #1f5fbf;background:#fff;color:#1f5fbf;border-radius:8px;padding:5px 9px;font:600 12px system-ui}#mpl .em{padding:18px 14px;color:#666}#mpl .tip{padding:0 14px 8px;color:#666;font-size:12px}',
 '.mptoast{position:fixed;z-index:2600;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;border-radius:10px;padding:10px 14px;font:600 14px system-ui;max-width:88vw;box-shadow:0 3px 12px rgba(0,0,0,.35)}#mpl .sy input{width:100%;box-sizing:border-box;margin:6px 0;padding:8px;border:1px solid #ccd;border-radius:8px;font:14px system-ui}','.mpbanner{position:fixed;z-index:2400;left:50%;transform:translateX(-50%);top:110px;background:#7a4fd1;color:#fff;border-radius:12px;padding:10px 12px;font:600 14px system-ui;box-shadow:0 3px 12px rgba(0,0,0,.3);display:flex;gap:8px;align-items:center;max-width:92vw}.mpbanner button{border:0;border-radius:8px;padding:7px 10px;font:600 13px system-ui;background:#fff;color:#4b2a99}'
 ].join('');document.head.appendChild(css);
-function svg(c){return '<svg width="26" height="36" viewBox="0 0 26 36"><path d="M13 1C6.4 1 1 6.3 1 12.9 1 22 13 35 13 35S25 22 25 12.9C25 6.3 19.6 1 13 1z" fill="'+c+'" stroke="#fff" stroke-width="2"/><circle cx="13" cy="13" r="4.5" fill="#fff"/></svg>'}
-function icon(s){return L.divIcon({className:'',iconSize:[0,0],html:'<div class="mpin">'+svg(COL[s]||COL.u)+'</div>'})}
+function svg(c,w,h){w=w||26;h=h||36;return '<svg width="'+w+'" height="'+h+'" viewBox="0 0 26 36"><path d="M13 1C6.4 1 1 6.3 1 12.9 1 22 13 35 13 35S25 22 25 12.9C25 6.3 19.6 1 13 1z" fill="'+c+'" stroke="#fff" stroke-width="2"/><circle cx="13" cy="13" r="4.5" fill="#fff"/></svg>'}
+function icon(s){var z=MP.getZoom(),c=COL[s]||COL.u;if(z<18&&s!=='s')return L.divIcon({className:'',iconSize:[0,0],html:''});if(z<18)return L.divIcon({className:'',iconSize:[0,0],html:'<div style="width:8px;height:8px;border-radius:5px;background:'+c+';border:1.5px solid #fff;box-shadow:0 0 2px rgba(0,0,0,.7);transform:translate(-5.5px,-5.5px)"></div>'});var w=z>=19?20:16,h=z>=19?28:22;return L.divIcon({className:'',iconSize:[0,0],html:'<div class="mpin" style="transform:translate(-'+(w/2)+'px,-'+(h-1)+'px)">'+svg(c,w,h)+'</div>'})}
+var SHM=[];MP.on('zoomend',function(){for(var id in MK){var p=find(id);if(p)MK[id].setIcon(icon(p.s))}SHM.forEach(function(m){m.setIcon(icon('s'))})});
 var LG=L.layerGroup();if(on)LG.addTo(MP);var MK={};
 function links(la,lo){return '<a href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+la+','+lo+'" target="_blank" rel="noopener">Street View</a><a href="https://www.google.com/maps/search/?api=1&query='+la+','+lo+'" target="_blank" rel="noopener">Google Maps</a><a href="https://earth.google.com/web/@'+la+','+lo+',300a,250d,35y,0h,45t,0r" target="_blank" rel="noopener">Earth 3D</a>'}
 function dstr(t){var d=new Date(t);return (d.getMonth()+1)+'/'+d.getDate()+'/'+d.getFullYear()}
@@ -509,7 +510,7 @@ document.addEventListener('input',function(e){var ta=e.target;if(ta.tagName!=='T
 /* drop a pin: long-press on phone / right-click on computer */
 var tmp=null;
 MP.on('contextmenu',function(e){var la=e.latlng.lat,lo=e.latlng.lng,a=nearAddr(la,lo);if(tmp)MP.removeLayer(tmp);
- tmp=L.marker(e.latlng,{pane:'mypins',icon:L.divIcon({className:'',iconSize:[0,0],html:'<div class="mpin" style="opacity:.75">'+svg('#555')+'</div>'})}).addTo(MP);
+ tmp=L.marker(e.latlng,{pane:'mypins',icon:L.divIcon({className:'',iconSize:[0,0],html:'<div class="mpin" style="opacity:.8;transform:translate(-10px,-27px)">'+svg('#555',20,28)+'</div>'})}).addTo(MP);
  tmp.bindPopup('<div class="mpop"><div class="h">New pin'+(a?' near '+esc(a):'')+'</div><div class="c">'+la.toFixed(6)+', '+lo.toFixed(6)+'</div><button class="big newp" data-s="u" style="background:#1e9e3a">Save as Undug (green)</button><button class="big newp" data-s="d" style="background:#d62020">Save as Dug (red)</button><div class="row" style="margin-top:10px">'+links(la.toFixed(6),lo.toFixed(6))+'</div><div class="row"><button class="cxl">Cancel</button></div></div>',{maxWidth:280,minWidth:220,autoPanPaddingTopLeft:[20,140],autoPanPaddingBottomRight:[20,40]}).openPopup();
  tmp.on('popupclose',function(){if(tmp&&!tmp._kept){MP.removeLayer(tmp);tmp=null}});
  tmp._d={la:la,lo:lo,a:a}});
@@ -517,7 +518,7 @@ document.addEventListener('click',function(e){var b=e.target.closest('.newp,.cxl
  if(b.classList.contains('cxl')){MP.closePopup();return}
  var d=tmp._d;tmp._kept=true;MP.removeLayer(tmp);tmp=null;var p={id:'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),la:d.la,lo:d.lo,s:b.dataset.s,n:'',a:d.a,t:Date.now()};PINS.push(p);save(p);if(!on){on=true;LG.addTo(MP)}draw();setTimeout(function(){MK[p.id].openPopup();var ta=document.querySelector('.mpop[data-id="'+p.id+'"] textarea');if(ta)ta.focus()},50)});
 /* list panel */
-var P=document.createElement('div');P.id='mpl';P.innerHTML='<div class="hd"><span>My pins</span><button class="cl" aria-label="Close">\u2715</button></div><div class="tip">Hold your finger on the map (right-click on a computer) to drop a pin. Only you can see them.</div><div class="fl"><button data-f="all" class="on">All</button><button data-f="u">Undug</button><button data-f="d">Dug</button></div><div class="ls"></div><div class="sy"></div><div class="ft"><button class="tg"></button><button class="sha">Share pins</button><button class="exk">Save for Google Earth</button><button class="bak">Backup file</button><button class="imp">Load file</button></div>';document.body.appendChild(P);
+var P=document.createElement('div');P.id='mpl';P.innerHTML='<div class="hd"><span>My pins</span><button class="cl" aria-label="Close">\u2715</button></div><div class="tip">Pins are hidden when the map opens. Turn them on here; they show when you zoom in to about one block. Hold your finger on the map (right-click on a computer) to drop one.</div><div class="fl"><button data-f="all" class="on">All</button><button data-f="u">Undug</button><button data-f="d">Dug</button></div><div class="ls"></div><div class="sy"></div><div class="ft"><button class="tg"></button><button class="sha">Share pins</button><button class="exk">Save for Google Earth</button><button class="bak">Backup file</button><button class="imp">Load file</button></div>';document.body.appendChild(P);
 L.DomEvent.disableClickPropagation(P);L.DomEvent.disableScrollPropagation(P);
 var FL='all';
 function list(){var ls=P.querySelector('.ls');var arr=PINS.filter(function(p){return FL==='all'||p.s===FL}).slice().sort(function(a,b){return (b.m||b.t)-(a.m||a.t)});
@@ -579,7 +580,7 @@ function dec(s){s=s.replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';
 function shareLink(arr,title){var u=location.origin+location.pathname.replace(/work\/blank\.html$/,'')+'#pins='+enc(arr);var txt=title+' on the Old Iowa Houses Map';if(navigator.share){navigator.share({title:txt,text:txt,url:u}).catch(function(){})}else{try{navigator.clipboard.writeText(u);msg('Link copied. Paste it in a text or email.')}catch(e){prompt('Copy this link:',u)}}}
 /* opening a shared link: show those pins in purple, offer to save */
 (function(){var m=location.hash.match(/pins=([A-Za-z0-9_-]+)/);if(!m)return;var arr;try{arr=dec(m[1])}catch(e){return}if(!arr.length)return;
- var SL=L.layerGroup().addTo(MP);arr.forEach(function(p){L.marker([p.la,p.lo],{pane:'mypins',icon:icon('s'),zIndexOffset:2500}).bindPopup('<div class="mpop"><div class="h">'+esc(p.a||'Shared pin')+'</div><div class="c">Shared with you · '+(LBL[p.s]||'')+'</div>'+(p.n?'<div style="white-space:pre-wrap;margin-bottom:6px">'+esc(p.n)+'</div>':'')+'<div class="row">'+links(p.la.toFixed(6),p.lo.toFixed(6))+'</div></div>',{maxWidth:280}).addTo(SL)});
+ var SL=L.layerGroup().addTo(MP);arr.forEach(function(p){(function(m){SHM.push(m);return m})(L.marker([p.la,p.lo],{pane:'mypins',icon:icon('s'),zIndexOffset:2500})).bindPopup('<div class="mpop"><div class="h">'+esc(p.a||'Shared pin')+'</div><div class="c">Shared with you · '+(LBL[p.s]||'')+'</div>'+(p.n?'<div style="white-space:pre-wrap;margin-bottom:6px">'+esc(p.n)+'</div>':'')+'<div class="row">'+links(p.la.toFixed(6),p.lo.toFixed(6))+'</div></div>',{maxWidth:280}).addTo(SL)});
  setTimeout(function(){MP.fitBounds(L.latLngBounds(arr.map(function(p){return [p.la,p.lo]})).pad(0.3),{maxZoom:19})},700);
  var bn=document.createElement('div');bn.className='mpbanner';bn.innerHTML='<span>'+arr.length+' shared pin'+(arr.length>1?'s':'')+' (purple)</span><button class="sv">Save to my pins</button><button class="hd">Hide</button>';document.body.appendChild(bn);
  bn.querySelector('.sv').onclick=function(){merge(arr,'Saved');MP.removeLayer(SL);bn.remove();history.replaceState(null,'',location.pathname)};
