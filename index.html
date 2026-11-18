@@ -202,7 +202,7 @@ document.head.appendChild(css);
 var bar=document.createElement('div');bar.className='obar';
 bar.innerHTML='<div class="l l1"><button class="nm n1" title="Change map"></button><input type="range" class="s1" min="0" max="100"><button class="x mn" title="Make smaller" aria-label="Make smaller"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555" stroke-width="2.5" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button><button class="x x1" title="Turn off">×</button></div>'+
 '<div class="l l2" style="display:none"><button class="nm n2" title="Change map"></button><input type="range" class="s2" min="0" max="100" value="60"><button class="x x2" title="Remove">×</button></div>'+
-'<div class="l r2"><button class="add">+ Add another layer</button><label class="lt"><input type="checkbox" class="lt1"> Lot lines</label></div><div class="tip"></div><div class="pk"></div>';
+'<div class="l r2"><button class="add">+ Add another layer</button><label class="lt"><input type="checkbox" class="lt1"> Lot lines (2017 data)</label></div><div class="tip"></div><div class="pk"></div>';
 D.appendChild(bar);
 var pill=document.createElement('button');pill.className='opill';D.appendChild(pill);var GC=D.querySelector('.omg'),LT=null;var dn=document.createElement('button');dn.className='omdone';dn.textContent='Done';var pn=D.querySelector('.pn');if(pn)pn.appendChild(dn);dn.addEventListener('click',function(e){e.stopPropagation();D.classList.remove('open');sync()});pill.addEventListener('click',function(){D.classList.remove('mini');try{localStorage.removeItem('OIH_obmin')}catch(e){}sync()});try{if(localStorage.getItem('OIH_obmin'))D.classList.add('mini')}catch(e){}MP.on('click',function(){if(D.classList.contains('open')&&O.cur!=='none'){D.classList.remove('open');sync()}});
 L.DomEvent.disableClickPropagation(bar);L.DomEvent.disableScrollPropagation(bar);
@@ -237,7 +237,7 @@ var oms=D.querySelector('.oms');if(oms)oms.addEventListener('change',after);
 setTimeout(function(){sync();try{var k=localStorage.getItem('OIH_ov2');if(k&&O.cur!=='none')addSecond(k)}catch(e){}if(O.cur!=='none')D.classList.remove('open')},600);
 /* ---------------- background maps ---------------- */
 var BASES=[
- {id:'sum',n:'Photo – summer',s:'Sharpest photo, green trees (default)',l:BB.hybridS},
+ {id:'sum',n:'Photo – summer',s:'Older Esri archive photo (date varies, not the newest), sharpest, green trees (default)',l:BB.hybridS},
  {id:'leaf',n:'Photo – leaf-off',s:'Iowa 2023–25, no leaves, see under trees',l:BB.hybrid},
  {id:'new',n:'Photo – newest',s:'April 2026, blurrier and buildings lean',l:L.tileLayer('https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:19,attribution:'Imagery © Esri, Vantor'})},
  {id:'street',n:'Street map',s:'OpenStreetMap',l:BB.street},
