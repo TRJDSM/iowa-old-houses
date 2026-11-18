@@ -538,7 +538,7 @@ P.addEventListener('click',function(e){var t=e.target;
  if(t.closest('.dis')){var db=t.closest('.dis');if(!db.dataset.arm){db.dataset.arm=1;db.textContent='Tap again to disconnect';return}SYNC='';localStorage.removeItem('OIH_pinsync');SST='';sy();return}
  if(t.closest('.syn')){sync();return}});
 function sy(){var el=P.querySelector('.sy');if(!el)return;var w=Object.keys(DIRTY).length+DEL.length;
- if(!SYNC){el.innerHTML='<b class="no">Pins are only on this device.</b><button class="con">Connect Google Sheet</button>';return}
+ if(!SYNC){el.innerHTML='<b class="no">Pins are saved on this device only.</b>';return}
  el.innerHTML=(SST==='busy'?'Saving…':SST==='err'||w?'<b class="no">'+(w?w+' change'+(w>1?'s':'')+' waiting to save':'Could not reach your Google Sheet')+' (no internet?)</b><button class="syn">Try now</button>':'<b class="ok">✓ Auto-saved to your Google Sheet</b>')+'<button class="dis">Disconnect</button>'}
 /* auto-save to the user's own Google Sheet (Apps Script web app). The address is pasted once per device and never put in the map's code or share links. */
 var tmr=null;function later(){if(!SYNC)return;clearTimeout(tmr);tmr=setTimeout(sync,1200)}
