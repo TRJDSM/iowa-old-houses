@@ -611,4 +611,90 @@ q.addEventListener("change",function(){save(q.value)});q.addEventListener("keydo
 function vis(){const v=on&&M.getZoom()>=18;HP.style.display=v?"":"none";return v}
 async function load(){if(!vis())return;const b=M.getBounds();const q=new URLSearchParams({geometry:[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()].join(","),geometryType:"esriGeometryEnvelope",inSR:4326,spatialRel:"esriSpatialRelIntersects",outFields:"PROP_ADDR,SQMETERS",returnGeometry:false,returnCentroid:true,outSR:4326,f:"json",resultRecordCount:2000});try{const j=await (await fetch(SU,{method:"POST",body:q})).json();const best={};for(const f of j.features||[]){const a=f.attributes.PROP_ADDR||"",n=a.split(" ")[0],m=f.attributes.SQMETERS||0;if(!/^\d/.test(n)||m<45||!f.centroid)continue;const k=a;if(!best[k]||best[k].m<m)best[k]={n,m,c:f.centroid}}for(const k in best){if(SEEN[k])continue;SEEN[k]=1;const o=best[k];L.marker([o.c.y,o.c.x],{pane:"hnums",interactive:true,keyboard:false,icon:L.divIcon({className:"",html:'<div class="hnl">'+o.n+'</div>',iconSize:[0,0]})}).on("click",ev=>{const la=o.c.y.toFixed(6),lo=o.c.x.toFixed(6);L.popup({offset:[0,12]}).setLatLng([o.c.y,o.c.x]).setContent('<b>'+o.n+'</b><br><a target="_blank" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+la+','+lo+'">Street View ↗</a> · <a target="_blank" href="https://www.google.com/maps/search/?api=1&query='+la+','+lo+'">Google Maps ↗</a><br><a target="_blank" rel="noopener" href="https://www.assess.co.polk.ia.us/cgi-bin/web/tt/form.cgi?tt=simplegeneralform&info=1&form_state=1&popup_state=0&results_max=5000&fields_routine__p_address=p_address&submit_form=Perform+Search&straddr__address='+encodeURIComponent(k.split(",")[0].trim())+'">Assessor ↗</a>').openOn(M);L.DomEvent.stopPropagation(ev)}).addTo(G)}}catch(e){}}
 M.on("moveend zoomend",load);load();
-setTimeout(()=>{const btn=document.querySelector('#mnd [data-a=hn]');if(btn)btn.onclick=e=>{on=!on;e.target.textContent=on?"Hide house numbers":"Show house numbers";document.getElementById("mnd").classList.remove("open");load();vis()}},0)})();</script></html>
+setTimeout(()=>{const btn=document.querySelector('#mnd [data-a=hn]');if(btn)btn.onclick=e=>{on=!on;e.target.textContent=on?"Hide house numbers":"Show house numbers";document.getElementById("mnd").classList.remove("open");load();vis()}},0)})();</script><script>(function(){
+var O=window.OV;if(!O||!O.M||!window.L)return;var MP=O.M;
+var U='https://services.arcgis.com/HT7H9QGiZQoRJDpJ/arcgis/rest/services/Street_Centerlines_view/FeatureServer/0/query';
+var AB={street:'st',str:'st',avenue:'ave',av:'ave',drive:'dr',court:'ct',place:'pl',road:'rd',lane:'ln',boulevard:'blvd',parkway:'pkwy',terrace:'ter',circle:'cir',highway:'hwy',north:'n',south:'s',east:'e',west:'w',northeast:'ne',northwest:'nw',southeast:'se',southwest:'sw',mount:'mt',saint:'st',
+ first:'1st',second:'2nd',third:'3rd',fourth:'4th',fifth:'5th',sixth:'6th',seventh:'7th',eighth:'8th',ninth:'9th',tenth:'10th',eleventh:'11th',twelfth:'12th',thirteenth:'13th',fourteenth:'14th',fifteenth:'15th',sixteenth:'16th',seventeenth:'17th',eighteenth:'18th',nineteenth:'19th',twentieth:'20th',mlk:'martin luther king jr'};
+var DIR={n:1,s:1,e:1,w:1,ne:1,nw:1,se:1,sw:1};
+function norm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9 ]+/g,' ').replace(/\b[a-z]+\b/g,function(w){return AB[w]||w}).replace(/\s+/g,' ').trim()}
+function noDir(n){var p=n.split(' ');if(p.length>1&&DIR[p[0]])p.shift();return p.join(' ')}
+function esc(s){return String(s).replace(/'/g,"''")}
+var css=document.createElement('style');css.textContent='.tb-r svg{width:22px;height:22px;stroke:#1c1c1c;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}'+
+'#rsb{position:fixed;z-index:1300;left:10px;right:64px;top:132px;display:none;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.35);padding:8px;font:14px system-ui,-apple-system,sans-serif;color:#111}#rsb.on{display:block}'+
+'#rsb .rr{display:flex;gap:6px}#rsb input{flex:1;min-width:0;font-size:16px;padding:9px 10px;border:1px solid #bbb;border-radius:8px}#rsb button{border:0;border-radius:8px;padding:0 12px;font-size:14px;font-weight:700;background:#1e6dff;color:#fff;min-height:40px}#rsb button.x{background:#e5e5e5;color:#111}'+
+'#rsb .hint{font-size:12px;color:#666;margin-top:5px}#rsb .ls{margin-top:6px;max-height:210px;overflow:auto}#rsb .ls div{padding:10px 8px;border-top:1px solid #eee;cursor:pointer}#rsb .ls div small{color:#666}#rsb .msg{margin-top:6px;font-weight:600}';
+document.head.appendChild(css);
+var pane=MP.createPane('rdp');pane.style.zIndex=640;pane.style.pointerEvents='none';
+var G=L.layerGroup().addTo(MP);
+var P=document.createElement('div');P.id='rsb';P.innerHTML='<div class="rr"><input id="rsi" type="text" autocomplete="off" autocapitalize="off" placeholder="Street or cross streets (E 14th & Grand)"><button id="rsg">Go</button><button class="x" id="rsx">Clear</button></div><div class="hint">Modern street names. Cross streets: E 14th &amp; Grand</div><div class="ls" id="rsl"></div><div class="msg" id="rsm"></div>';
+document.body.appendChild(P);L.DomEvent.disableClickPropagation(P);L.DomEvent.disableScrollPropagation(P);
+var inp=P.querySelector('#rsi'),ls=P.querySelector('#rsl'),ms=P.querySelector('#rsm');
+function msg(t){ms.textContent=t||''}
+var tbx=document.querySelector('.tbx');
+if(tbx){var b=document.createElement('button');b.className='tb-r';b.title='Find a street';b.setAttribute('aria-label','Find a street');b.innerHTML='<svg viewBox="0 0 24 24"><path d="M8 3 5 21"/><path d="M16 3l3 18"/><path d="M12 5v3M12 11v3M12 17v3"/></svg>';b.onclick=function(){P.classList.toggle('on');if(P.classList.contains('on'))setTimeout(function(){inp.focus()},50)};tbx.appendChild(b)}
+async function q(params){var u=new URLSearchParams(params);u.set('f','geojson');var r=await fetch(U+'?'+u.toString());return r.json()}
+async function names(text){var n=norm(text);var toks=n.split(' ').filter(function(t){return t&&!DIR[t]});if(!toks.length)return[];
+ var w=toks.map(function(t){return "UPPER(FullName) LIKE '%"+esc(t.toUpperCase())+"%'"}).join(' AND ');
+ var j=await q({where:w,outFields:'FullName,LCity,RCity',returnGeometry:'false',resultRecordCount:'2000'});
+ var seen={},out=[];(j.features||[]).forEach(function(f){var p=f.properties,nm=p.FullName;if(!nm)return;var city=p.LCity||p.RCity||'';var k=nm;if(seen[k]){seen[k].n++;if(city&&seen[k].cs.indexOf(city)<0)seen[k].cs.push(city);return}var nn=norm(nm);var rank=nn===n?0:noDir(nn)===noDir(n)?1:noDir(nn).indexOf(noDir(n))===0?(noDir(nn).split(' ').length<=noDir(n).split(' ').length+1?2:3):4;seen[k]={nm:nm,city:'',cs:city?[city]:[],rank:rank,n:1};out.push(seen[k])});
+ out.sort(function(a,b){return a.rank-b.rank||b.n-a.n});return out}
+var GC={};async function geom(nm){if(GC[nm])return GC[nm];var w="FullName='"+esc(nm)+"'";var j=await q({where:w,outFields:'FullName,LCity',returnGeometry:'true',outSR:'4326',geometryPrecision:'5',maxAllowableOffset:'0.00004',resultRecordCount:'2000'});var L2=[];(j.features||[]).forEach(function(f){var g=f.geometry;if(!g)return;(g.type==='LineString'?[g.coordinates]:g.type==='MultiLineString'?g.coordinates:[]).forEach(function(cs){if(cs.length>1){var ar=cs.map(function(c){return[c[1],c[0]]});ar.city=f.properties.LCity||'';L2.push(ar)}})});GC[nm]=L2;return L2}
+function drawLines(lines){var grp=[];lines.forEach(function(ls2){grp.push(L.polyline(ls2,{pane:'rdp',color:'#fff',weight:13,opacity:.9,lineCap:'round',lineJoin:'round',interactive:false}));grp.push(L.polyline(ls2,{pane:'rdp',color:'#1e6dff',weight:8,opacity:1,lineCap:'round',lineJoin:'round',interactive:false}))});grp.forEach(function(l){G.addLayer(l)})}
+function clear(){G.clearLayers();ls.innerHTML='';msg('')}
+function bounds(lines){var b=null;lines.forEach(function(l){var x=L.latLngBounds(l);b=b?b.extend(x):x});return b}
+function clusters(lines){var par=lines.map(function(_,i){return i});function fd(i){while(par[i]!==i){par[i]=par[par[i]];i=par[i]}return i}var grid={};function key(p){return Math.round(p[0]/0.0045)+'_'+Math.round(p[1]/0.0060)}lines.forEach(function(l,i){[l[0],l[l.length-1]].forEach(function(p){var kx=Math.round(p[0]/0.0045),ky=Math.round(p[1]/0.0060);for(var dx=-1;dx<=1;dx++)for(var dy=-1;dy<=1;dy++){var g=grid[(kx+dx)+'_'+(ky+dy)];if(g)g.forEach(function(o){if(L.latLng(o.p).distanceTo(L.latLng(p))<500){par[fd(i)]=fd(o.i)}})}(grid[key(p)]=grid[key(p)]||[]).push({i:i,p:p})})});var cl={};lines.forEach(function(l,i){var r=fd(i);(cl[r]=cl[r]||[]).push(l)});var out=Object.keys(cl).map(function(k){var ls2=cl[k],cc={};ls2.forEach(function(l){if(l.city)cc[l.city]=(cc[l.city]||0)+1});return{lines:ls2,len:totalLen(ls2),cities:Object.keys(cc).sort(function(a,b){return cc[b]-cc[a]})}});out.sort(function(a,b){return b.len-a.len});return out}
+function drawCl(nm,c){G.clearLayers();ls.innerHTML='';drawLines(c.lines);var b=bounds(c.lines);var cap=P.classList.contains('on')?{paddingTopLeft:[20,190],paddingBottomRight:[20,40]}:{padding:[30,30]};MP.fitBounds(b,Object.assign({maxZoom:18},cap));msg(nm+(c.cities.length?' · '+c.cities.slice(0,3).join(', '):'')+' — '+Math.round(c.len/1609.34*10)/10+' mi')}
+async function showStreet(nm){clear();msg('Loading '+nm+'…');var lines=await geom(nm);if(!lines.length){msg('No lines found for '+nm);return}var cl=clusters(lines);if(cl.length>1&&cl[1].len>1600){ls.innerHTML='';cl.filter(function(c){return c.len>320}).forEach(function(c){var d=document.createElement('div');d.innerHTML='<b>'+nm+'</b> <small>'+c.cities.slice(0,3).join(', ')+' · '+Math.round(c.len/1609.34*10)/10+' mi</small>';d.onclick=function(){drawCl(nm,c)};ls.appendChild(d)});msg('Which one?');return}drawCl(nm,cl[0]);return;var b=bounds(lines);var cap=P.classList.contains('on')?{paddingTopLeft:[20,190],paddingBottomRight:[20,40]}:{padding:[30,30]};MP.fitBounds(b,Object.assign({maxZoom:18},cap));msg(nm+(city?' · '+city:'')+' — '+Math.round(totalLen(lines)/1609.34*10)/10+' mi')}
+function totalLen(lines){var t=0;lines.forEach(function(l){for(var i=1;i<l.length;i++)t+=L.latLng(l[i-1]).distanceTo(L.latLng(l[i]))});return t}
+function segInt(a,b,c,d){var x1=a[1],y1=a[0],x2=b[1],y2=b[0],x3=c[1],y3=c[0],x4=d[1],y4=d[0];var den=(x1-x2)*(y3-y4)-(y1-y2)*(x3-x4);if(Math.abs(den)<1e-14)return null;var t=((x1-x3)*(y3-y4)-(y1-y3)*(x3-x4))/den,u=-((x1-x2)*(y1-y3)-(y1-y2)*(x1-x3))/den;if(t<-0.02||t>1.02||u<-0.02||u>1.02)return null;return[y1+t*(y2-y1),x1+t*(x2-x1)]}
+function crossPts(A,B){var pts=[];A.forEach(function(a){B.forEach(function(b){for(var i=1;i<a.length;i++)for(var j=1;j<b.length;j++){var p=segInt(a[i-1],a[i],b[j-1],b[j]);if(p){p.city=a.city;pts.push(p)}}})});
+ if(!pts.length){var best=null,bd=1e9;A.forEach(function(a){B.forEach(function(b){[a[0],a[a.length-1]].forEach(function(p){b.forEach(function(c){var d=L.latLng(p).distanceTo(L.latLng(c));if(d<bd){bd=d;best=[(p[0]+c[0])/2,(p[1]+c[1])/2]}})});[b[0],b[b.length-1]].forEach(function(p){a.forEach(function(c){var d=L.latLng(p).distanceTo(L.latLng(c));if(d<bd){bd=d;best=[(p[0]+c[0])/2,(p[1]+c[1])/2]}})})})});if(best&&bd<45){best.city='';pts.push(best)}}
+ var out=[];pts.forEach(function(p){if(!out.some(function(o){return L.latLng(o).distanceTo(L.latLng(p))<60}))out.push(p)});return out}
+async function showCross(t1,t2){clear();msg('Looking up the corner…');var a=await names(t1),b=await names(t2);if(!a.length||!b.length){msg('Could not find '+(!a.length?t1:t2));return}
+ var found=[];var an=a.filter(function(x){return x.rank===a[0].rank}).slice(0,5),bn=b.filter(function(x){return x.rank===b[0].rank}).slice(0,5);await Promise.all(an.concat(bn).map(function(x){return geom(x.nm)}));
+ for(var i=0;i<an.length;i++)for(var j=0;j<bn.length;j++){if(an[i].nm===bn[j].nm)continue;
+  var A=await geom(an[i].nm),B=await geom(bn[j].nm);var pts=crossPts(A,B);pts.forEach(function(p){found.push({p:p,a:an[i].nm,b:bn[j].nm,city:p.city||'',A:A,B:B})})}
+ if(!found.length){msg('No corner found for '+t1+' & '+t2+'. Try the full street names.');return}
+ if(found.length>1){clear();ls.innerHTML='';found.forEach(function(f,ix){var d=document.createElement('div');d.innerHTML='<b>'+f.a+' &amp; '+f.b+'</b><br><small>'+(f.city||'')+(found.length>1?' · corner '+(ix+1)+' of '+found.length+' (lat '+f.p[0].toFixed(4)+')':'')+'</small>';d.onclick=function(){go1(f)};ls.appendChild(d)});msg('Which corner?');return}
+ go1(found[0])}
+function go1(f){G.clearLayers();ls.innerHTML='';drawLines(f.A);drawLines(f.B);var pin=L.circleMarker(f.p,{pane:'rdp',radius:11,color:'#fff',weight:4,fillColor:'#ff2d2d',fillOpacity:1,interactive:false});G.addLayer(pin);MP.setView(f.p,18);msg(f.a+' & '+f.b+(f.city?' · '+f.city:''))}
+var SEP=/\s*(?:&|\band\b|\/|\bat\b|\bx\b)\s*/i;
+async function run(){var t=inp.value.trim();if(!t)return;try{var parts=t.split(SEP).filter(Boolean);if(parts.length>=2){await showCross(parts[0],parts[1]);return}
+ var r=await names(t);if(!r.length){clear();msg('No street found for '+t);return}
+ var top=r.filter(function(x){return x.rank===r[0].rank});if(top.length===1){await showStreet(top[0].nm);return}
+ showList(top.length>1&&top.length<=12?top:r.slice(0,12))}catch(e){msg('Street lookup failed. Check your connection and try again.')}}
+function showList(arr){clear();arr.forEach(function(x){var d=document.createElement('div');d.innerHTML='<b>'+x.nm+'</b> <small>'+(x.cs||[]).slice(0,3).join(', ')+'</small>';d.onclick=function(){showStreet(x.nm)};ls.appendChild(d)});msg(arr.length>1?'Pick one':'')}
+var tm=null;inp.addEventListener('input',function(){clearTimeout(tm);tm=setTimeout(async function(){var t=inp.value.trim();if(t.length<3||SEP.test(t)){return}try{var r=await names(t);if(inp.value.trim()!==t)return;ls.innerHTML='';msg('');r.slice(0,8).forEach(function(x){var d=document.createElement('div');d.innerHTML='<b>'+x.nm+'</b> <small>'+(x.cs||[]).slice(0,3).join(', ')+'</small>';d.onclick=function(){inp.value=x.nm;showStreet(x.nm)};ls.appendChild(d)})}catch(e){}},300)});
+inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();inp.blur();run()}});
+P.querySelector('#rsg').onclick=function(){inp.blur();run()};
+P.querySelector('#rsx').onclick=function(){inp.value='';clear();P.classList.remove('on')};
+window.ROADS={run:run,showStreet:showStreet,names:names,crossPts:crossPts};
+})();</script><script>(function(){
+var O=window.OV;if(!O||!O.M||!window.L)return;var MP=O.M;
+var PU='https://services3.arcgis.com/kd9gaiUExYqUbnoq/ArcGIS/rest/services/Iowa_Parcels_2017/FeatureServer/0/query';
+var css=document.createElement('style');css.textContent='.tbx .tb-l.on{background:#1e6dff}.tbx .tb-l.on svg{stroke:#fff}.tb-l svg{width:22px;height:22px;stroke:#1c1c1c;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}#lotmsg{position:fixed;z-index:1250;left:50%;transform:translateX(-50%);top:84px;background:#1e6dff;color:#fff;font:600 13px system-ui,-apple-system,sans-serif;padding:7px 12px;border-radius:16px;display:none;box-shadow:0 2px 8px rgba(0,0,0,.3)}#lotmsg.on{display:block}.lotp a{display:inline-block;margin:6px 10px 0 0;font-weight:700}.lotp .c{font-size:12px;color:#555}';
+document.head.appendChild(css);
+var tbx=document.querySelector('.tbx');if(!tbx)return;
+var on=false,hl=null,pane=MP.createPane('lotp');pane.style.zIndex=635;pane.style.pointerEvents='none';
+var note=document.createElement('div');note.id='lotmsg';note.textContent='Tap any lot to open its assessor record';document.body.appendChild(note);
+var b=document.createElement('button');b.className='tb-l';b.title='Tap a lot to open its record';b.setAttribute('aria-label','Tap a lot to open its assessor record');b.innerHTML='<svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M4 12h16M12 5v14"/></svg>';
+b.onclick=function(){on=!on;b.classList.toggle('on',on);note.classList.toggle('on',on);if(!on&&hl){MP.removeLayer(hl);hl=null;MP.closePopup()}};tbx.appendChild(b);
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+MP.getContainer().addEventListener('click',async function(ev){
+ if(!on)return;var t=ev.target;if(t.closest&&t.closest('.leaflet-control,.leaflet-popup,.tbx,#rsb,#bar,.bpop,#loc,.marker-cluster,.leaflet-marker-icon'))return;
+ ev.stopImmediatePropagation();ev.preventDefault();
+ var ll=MP.mouseEventToLatLng(ev);
+ try{var u=new URLSearchParams({geometry:ll.lng+','+ll.lat,geometryType:'esriGeometryPoint',inSR:'4326',spatialRel:'esriSpatialRelIntersects',outFields:'PARCELNUMB,PARCELCLAS,COUNTYNAME',returnGeometry:'true',outSR:'4326',geometryPrecision:'6',f:'geojson'});
+  var j=await (await fetch(PU+'?'+u.toString())).json();var f=(j.features||[])[0];
+  if(hl){MP.removeLayer(hl);hl=null}
+  if(!f){L.popup().setLatLng(ll).setContent('<div class="lotp">No parcel found here.</div>').openOn(MP);return}
+  var p=f.properties,dp=p.PARCELNUMB||'',cty=String(p.COUNTYNAME||'');
+  hl=L.geoJSON(f.geometry,{pane:'lotp',style:{color:'#fff',weight:5,fill:false,opacity:.95},interactive:false}).addTo(MP);
+  L.geoJSON(f.geometry,{pane:'lotp',style:{color:'#1e6dff',weight:3,fill:true,fillColor:'#1e6dff',fillOpacity:.12},interactive:false}).addTo(hl);
+  var la=ll.lat.toFixed(6),lo=ll.lng.toFixed(6),html='<div class="lotp"><b>Parcel '+esc(dp)+'</b><div class="c">'+esc(String(p.PARCELCLAS||'').toLowerCase())+(cty?' · '+esc(cty.charAt(0)+cty.slice(1).toLowerCase())+' County':'')+'</div>';
+  if(/^POLK$/i.test(cty)&&/^\d{14}$/.test(dp))html+='<a target="_blank" rel="noopener" href="https://www.assess.co.polk.ia.us/cgi-bin/web/tt/infoqry.cgi?tt=card/card&dp='+dp+'">Assessor record ↗</a>';
+  html+='<a target="_blank" rel="noopener" href="https://www.google.com/maps/@?api=1&map_action=pano&viewpoint='+la+','+lo+'">Street View ↗</a></div>';
+  L.popup({offset:[0,0]}).setLatLng(ll).setContent(html).openOn(MP)}catch(e){L.popup().setLatLng(ll).setContent('<div class="lotp">Lot lookup failed. Try again.</div>').openOn(MP)}
+},true);
+})();</script></html>
